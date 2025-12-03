@@ -221,8 +221,9 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                 <div className="mt-2 text-sm text-yellow-700">
                   <p>
                     YouTube's embedded player may show recommendations from the same channel when videos pause or end.
-                    While we've minimized this, we recommend supervising young children during viewing.
-                    We've added overlays to block clickable areas, but the safest approach is active supervision.
+                    We've configured the player with maximum restrictions (rel=0, modestbranding, etc.), but YouTube's ToS
+                    doesn't allow completely disabling recommendations. We recommend supervising young children during viewing
+                    and only adding videos from trusted, kid-safe channels.
                   </p>
                 </div>
               </div>

@@ -171,17 +171,6 @@ export default function WatchPage() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               ></iframe>
-
-              {/* Overlay to block YouTube recommendations - positioned at the end area */}
-              <div
-                className="pointer-events-none absolute inset-0"
-                style={{ zIndex: 1 }}
-              >
-                {/* Block top-right area where YouTube logo and recommendations appear */}
-                <div className="pointer-events-auto absolute right-0 top-0 h-16 w-32 bg-transparent"></div>
-                {/* Block bottom area where end screen recommendations appear */}
-                <div className="pointer-events-auto absolute bottom-0 left-0 right-0 h-24 bg-transparent"></div>
-              </div>
             </div>
           </div>
 
