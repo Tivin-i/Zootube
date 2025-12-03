@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Video } from "@/types/database";
+import Image from "next/image";
 
 interface AdminDashboardProps {
   user: User;
@@ -12,10 +14,108 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ user }: AdminDashboardProps) {
   const router = useRouter();
   const supabase = createClient();
-  const [testUrl, setTestUrl] = useState("");
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
-  const [testError, setTestError] = useState<string | null>(null);
+
+  // Video management state
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(true);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [addingVideo, setAddingVideo] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState<string | null>(null);
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
+
+  const fetchVideos = useCallback(async () => {
+    setLoadingVideos(true);
+    try {
+      const response = await fetch(`/api/videos?parent_id=${user.id}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setVideos(data.videos || []);
+      } else {
+        console.error("Error fetching videos:", data.error);
+      }
+    } catch (error) {
+      console.error("Error fetching videos:", error);
+    } finally {
+      setLoadingVideos(false);
+    }
+  }, [user.id]);
+
+  // Fetch videos on mount
+  useEffect(() => {
+    fetchVideos();
+  }, [fetchVideos]);
+
+  const handleAddVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingVideo(true);
+    setAddError(null);
+    setAddSuccess(null);
+
+    try {
+      const response = await fetch("/api/videos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: videoUrl }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setAddError(data.error || "Failed to add video");
+      } else {
+        setAddSuccess("Video added successfully!");
+        setVideoUrl("");
+        // Refresh video list
+        await fetchVideos();
+        // Clear success message after 3 seconds
+        setTimeout(() => setAddSuccess(null), 3000);
+      }
+    } catch (error: any) {
+      setAddError(error.message || "An error occurred");
+    } finally {
+      setAddingVideo(false);
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!confirm("Are you sure you want to remove this video?")) {
+      return;
+    }
+
+    setDeletingVideoId(videoId);
+
+    try {
+      const response = await fetch(`/api/videos/${videoId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove from local state
+        setVideos(videos.filter((v) => v.id !== videoId));
+      } else {
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          alert(data.error || "Failed to delete video");
+        } else {
+          // If not JSON, read as text for debugging
+          const text = await response.text();
+          console.error("Non-JSON response:", text);
+          alert(`Failed to delete video (Status: ${response.status})`);
+        }
+      }
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      alert(error.message || "An error occurred");
+    } finally {
+      setDeletingVideoId(null);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -23,33 +123,11 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     router.refresh();
   };
 
-  const handleTestYouTube = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTesting(true);
-    setTestResult(null);
-    setTestError(null);
-
-    try {
-      const response = await fetch("/api/test-youtube", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url: testUrl }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setTestError(data.error || "Failed to fetch video metadata");
-      } else {
-        setTestResult(data.metadata);
-      }
-    } catch (error: any) {
-      setTestError(error.message || "An error occurred");
-    } finally {
-      setTesting(false);
-    }
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -77,79 +155,37 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="space-y-6">
-          {/* Welcome Section */}
+          {/* Add Video Section */}
           <div className="rounded-lg bg-white p-6 shadow">
             <h2 className="text-lg font-semibold text-gray-900">
-              Welcome to SafeTube!
+              Add YouTube Video
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Your admin dashboard is set up successfully. Video management
-              features are coming in Phase 3 of development.
+              Paste a YouTube video URL to add it to your child's collection.
             </p>
 
-            <div className="mt-6 rounded-md bg-blue-50 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-blue-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-1">
-                  <h3 className="text-sm font-medium text-blue-800">
-                    Setup Complete
-                  </h3>
-                  <div className="mt-2 text-sm text-blue-700">
-                    <ul className="list-inside list-disc space-y-1">
-                      <li>Authentication working correctly</li>
-                      <li>Database connected</li>
-                      <li>Ready for Phase 3 development</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* YouTube API Test Section */}
-          <div className="rounded-lg bg-white p-6 shadow">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Test YouTube API Connection
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Paste a YouTube video URL to test if the API is configured
-              correctly.
-            </p>
-
-            <form onSubmit={handleTestYouTube} className="mt-4">
+            <form onSubmit={handleAddVideo} className="mt-4">
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={testUrl}
-                  onChange={(e) => setTestUrl(e.target.value)}
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
                   placeholder="https://www.youtube.com/watch?v=..."
                   className="block flex-1 rounded-md border-0 px-3 py-2 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                   required
                 />
                 <button
                   type="submit"
-                  disabled={testing}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={addingVideo}
+                  className="rounded-md bg-blue-600 px-6 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {testing ? "Testing..." : "Test"}
+                  {addingVideo ? "Adding..." : "Add Video"}
                 </button>
               </div>
             </form>
 
             {/* Error Display */}
-            {testError && (
+            {addError && (
               <div className="mt-4 rounded-md bg-red-50 p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -167,14 +203,14 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-red-800">Error</h3>
-                    <div className="mt-2 text-sm text-red-700">{testError}</div>
+                    <div className="mt-2 text-sm text-red-700">{addError}</div>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Success Display */}
-            {testResult && (
+            {addSuccess && (
               <div className="mt-4 rounded-md bg-green-50 p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -190,51 +226,123 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                       />
                     </svg>
                   </div>
-                  <div className="ml-3 flex-1">
+                  <div className="ml-3">
                     <h3 className="text-sm font-medium text-green-800">
-                      Success! YouTube API is working
+                      {addSuccess}
                     </h3>
-                    <div className="mt-4 space-y-3">
-                      <div className="flex items-start gap-4">
-                        {testResult.thumbnailUrl && (
-                          <img
-                            src={testResult.thumbnailUrl}
-                            alt={testResult.title}
-                            className="h-24 w-auto rounded-md"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">
-                            {testResult.title}
-                          </p>
-                          <dl className="mt-2 space-y-1 text-xs text-gray-600">
-                            <div>
-                              <dt className="inline font-medium">Video ID: </dt>
-                              <dd className="inline">{testResult.id}</dd>
-                            </div>
-                            <div>
-                              <dt className="inline font-medium">Duration: </dt>
-                              <dd className="inline">
-                                {Math.floor(testResult.durationSeconds / 60)}:
-                                {(testResult.durationSeconds % 60)
-                                  .toString()
-                                  .padStart(2, "0")}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="inline font-medium">
-                                Made for Kids:{" "}
-                              </dt>
-                              <dd className="inline">
-                                {testResult.madeForKids ? "Yes" : "No"}
-                              </dd>
-                            </div>
-                          </dl>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Video List Section */}
+          <div className="rounded-lg bg-white p-6 shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Your Video Collection
+                </h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  {videos.length} video{videos.length !== 1 ? "s" : ""} in your
+                  collection
+                </p>
+              </div>
+            </div>
+
+            {loadingVideos ? (
+              <div className="mt-6 flex justify-center py-12">
+                <div className="text-sm text-gray-500">Loading videos...</div>
+              </div>
+            ) : videos.length === 0 ? (
+              <div className="mt-6 rounded-md border-2 border-dashed border-gray-300 p-12 text-center">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  No videos yet
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Get started by adding a YouTube video above.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {videos.map((video) => (
+                  <div
+                    key={video.id}
+                    className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative aspect-video w-full overflow-hidden bg-gray-200">
+                      {video.thumbnail_url ? (
+                        <Image
+                          src={video.thumbnail_url}
+                          alt={video.title || "Video thumbnail"}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <svg
+                            className="h-12 w-12 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Duration Badge */}
+                      <div className="absolute bottom-2 right-2 rounded bg-black/75 px-2 py-0.5 text-xs font-medium text-white">
+                        {formatDuration(video.duration_seconds)}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex flex-1 flex-col p-4">
+                      <h3 className="line-clamp-2 text-sm font-medium text-gray-900">
+                        {video.title}
+                      </h3>
+                      <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                        <span>Watched: {video.watch_count}×</span>
+                        {video.made_for_kids && (
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-800">
+                            Kids
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Delete Button */}
+                      <button
+                        onClick={() => handleDeleteVideo(video.id)}
+                        disabled={deletingVideoId === video.id}
+                        className="mt-4 w-full rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {deletingVideoId === video.id
+                          ? "Removing..."
+                          : "Remove"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
