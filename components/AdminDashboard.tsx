@@ -47,7 +47,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     fetchVideos();
   }, [fetchVideos]);
 
-  const handleAddVideo = async (e: React.FormEvent) => {
+  const handleAddVideo = async (e: React.FormEvent, forceConfirm = false) => {
     e.preventDefault();
     setAddingVideo(true);
     setAddError(null);
@@ -59,13 +59,56 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url: videoUrl }),
+        body: JSON.stringify({
+          url: videoUrl,
+          confirmed: forceConfirm,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         setAddError(data.error || "Failed to add video");
+      } else if (data.warning) {
+        // Video is not "Made for Kids" - show confirmation dialog
+        setAddingVideo(false); // Reset loading state before showing dialog
+
+        const userConfirmed = confirm(
+          `⚠️ Warning\n\n${data.message}\n\nVideo: "${data.metadata.title}"`
+        );
+
+        if (userConfirmed) {
+          // Re-submit with confirmation
+          setAddingVideo(true);
+          try {
+            const confirmResponse = await fetch("/api/videos", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                url: videoUrl,
+                confirmed: true,
+              }),
+            });
+
+            const confirmData = await confirmResponse.json();
+
+            if (confirmResponse.ok && !confirmData.warning) {
+              setAddSuccess("Video added successfully!");
+              setVideoUrl("");
+              await fetchVideos();
+              setTimeout(() => setAddSuccess(null), 3000);
+            } else {
+              setAddError(confirmData.error || "Failed to add video");
+            }
+          } catch (error: any) {
+            setAddError(error.message || "An error occurred");
+          } finally {
+            setAddingVideo(false);
+          }
+        }
+        return; // Exit early after handling warning
       } else {
         setAddSuccess("Video added successfully!");
         setVideoUrl("");
@@ -155,6 +198,37 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="space-y-6">
+          {/* Safety Notice */}
+          <div className="rounded-lg border-l-4 border-yellow-400 bg-yellow-50 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-yellow-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Important: Supervise Viewing
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>
+                    YouTube's embedded player may show recommendations from the same channel when videos pause or end.
+                    While we've minimized this, we recommend supervising young children during viewing.
+                    We've added overlays to block clickable areas, but the safest approach is active supervision.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Add Video Section */}
           <div className="rounded-lg bg-white p-6 shadow">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -277,14 +351,14 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                 </p>
               </div>
             ) : (
-              <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-6 divide-y divide-gray-200">
                 {videos.map((video) => (
                   <div
                     key={video.id}
-                    className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+                    className="flex items-center gap-4 py-4 transition-colors hover:bg-gray-50"
                   >
-                    {/* Thumbnail */}
-                    <div className="relative aspect-video w-full overflow-hidden bg-gray-200">
+                    {/* Thumbnail - Left */}
+                    <div className="relative h-20 w-32 flex-shrink-0 overflow-hidden rounded-md bg-gray-200">
                       {video.thumbnail_url ? (
                         <Image
                           src={video.thumbnail_url}
@@ -296,7 +370,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                       ) : (
                         <div className="flex h-full items-center justify-center">
                           <svg
-                            className="h-12 w-12 text-gray-400"
+                            className="h-8 w-8 text-gray-400"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -311,34 +385,34 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                         </div>
                       )}
                       {/* Duration Badge */}
-                      <div className="absolute bottom-2 right-2 rounded bg-black/75 px-2 py-0.5 text-xs font-medium text-white">
+                      <div className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white">
                         {formatDuration(video.duration_seconds)}
                       </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="flex flex-1 flex-col p-4">
-                      <h3 className="line-clamp-2 text-sm font-medium text-gray-900">
+                    {/* Content - Middle */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-gray-900 line-clamp-2">
                         {video.title}
                       </h3>
-                      <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                      <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
                         <span>Watched: {video.watch_count}×</span>
                         {video.made_for_kids && (
-                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-800">
+                          <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-green-800">
                             Kids
                           </span>
                         )}
                       </div>
+                    </div>
 
-                      {/* Delete Button */}
+                    {/* Action Buttons - Right */}
+                    <div className="flex-shrink-0">
                       <button
                         onClick={() => handleDeleteVideo(video.id)}
                         disabled={deletingVideoId === video.id}
-                        className="mt-4 w-full rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {deletingVideoId === video.id
-                          ? "Removing..."
-                          : "Remove"}
+                        {deletingVideoId === video.id ? "Removing..." : "Remove"}
                       </button>
                     </div>
                   </div>

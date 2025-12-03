@@ -21,8 +21,7 @@ export async function GET(request: NextRequest) {
       .from("videos")
       .select("*")
       .eq("parent_id", parentId)
-      .order("watch_count", { ascending: true })
-      .order("created_at", { ascending: false });
+      .order("watch_count", { ascending: true });
 
     if (error) {
       console.error("Error fetching videos:", error);
@@ -32,7 +31,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ videos });
+    // Group videos by watch_count and randomize within each group
+    if (videos && videos.length > 0) {
+      // Group by watch_count
+      const grouped = videos.reduce((acc, video) => {
+        const count = video.watch_count;
+        if (!acc[count]) {
+          acc[count] = [];
+        }
+        acc[count].push(video);
+        return acc;
+      }, {} as Record<number, typeof videos>);
+
+      // Randomize each group and flatten back
+      const sortedVideos = Object.keys(grouped)
+        .sort((a, b) => Number(a) - Number(b)) // Sort by watch_count
+        .flatMap((count) => {
+          const group = grouped[Number(count)];
+          // Shuffle the group using Fisher-Yates algorithm
+          for (let i = group.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [group[i], group[j]] = [group[j], group[i]];
+          }
+          return group;
+        });
+
+      return NextResponse.json({ videos: sortedVideos });
+    }
+
+    return NextResponse.json({ videos: videos || [] });
   } catch (error: any) {
     console.error("Error in GET /api/videos:", error);
     return NextResponse.json(
@@ -56,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { url } = await request.json();
+    const { url, confirmed } = await request.json();
 
     if (!url) {
       return NextResponse.json(
@@ -72,6 +99,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid YouTube URL or video not found" },
         { status: 404 }
+      );
+    }
+
+    // Check if video is NOT made for kids and not yet confirmed
+    if (!metadata.madeForKids && !confirmed) {
+      return NextResponse.json(
+        {
+          warning: true,
+          message:
+            "This video is not marked as 'Made for Kids'. Are you sure you want to add it to your child's collection?",
+          metadata: {
+            title: metadata.title,
+            madeForKids: metadata.madeForKids,
+          },
+        },
+        { status: 200 }
       );
     }
 
