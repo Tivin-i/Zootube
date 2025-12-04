@@ -6,6 +6,8 @@ import { User } from "@supabase/supabase-js";
 import { useState, useEffect, useCallback } from "react";
 import { Video } from "@/types/database";
 import Image from "next/image";
+import { DataTable } from "@/components/ui/data-table";
+import { videoColumns } from "@/components/video-columns";
 
 interface AdminDashboardProps {
   user: User;
@@ -124,37 +126,41 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     }
   };
 
-  const handleDeleteVideo = async (videoId: string) => {
-    if (!confirm("Are you sure you want to remove this video?")) {
+  const handleBulkDelete = async (videosToDelete: Video[]) => {
+    const count = videosToDelete.length;
+    if (
+      !confirm(
+        `Are you sure you want to remove ${count} video${count > 1 ? "s" : ""}?`
+      )
+    ) {
       return;
     }
 
-    setDeletingVideoId(videoId);
+    setDeletingVideoId("bulk");
 
     try {
-      const response = await fetch(`/api/videos/${videoId}`, {
-        method: "DELETE",
-      });
+      // Delete all videos in parallel
+      const deletePromises = videosToDelete.map((video) =>
+        fetch(`/api/videos/${video.id}`, {
+          method: "DELETE",
+        })
+      );
 
-      if (response.ok) {
-        // Remove from local state
-        setVideos(videos.filter((v) => v.id !== videoId));
-      } else {
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const data = await response.json();
-          alert(data.error || "Failed to delete video");
-        } else {
-          // If not JSON, read as text for debugging
-          const text = await response.text();
-          console.error("Non-JSON response:", text);
-          alert(`Failed to delete video (Status: ${response.status})`);
-        }
+      const results = await Promise.all(deletePromises);
+
+      // Check for any failures
+      const failures = results.filter((r) => !r.ok);
+      if (failures.length > 0) {
+        alert(
+          `Failed to delete ${failures.length} video${failures.length > 1 ? "s" : ""}`
+        );
       }
+
+      // Refresh the video list
+      await fetchVideos();
     } catch (error: any) {
-      console.error("Delete error:", error);
-      alert(error.message || "An error occurred");
+      console.error("Bulk delete error:", error);
+      alert(error.message || "An error occurred during bulk delete");
     } finally {
       setDeletingVideoId(null);
     }
@@ -164,13 +170,6 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     await supabase.auth.signOut();
     router.push("/admin/login");
     router.refresh();
-  };
-
-  const formatDuration = (seconds: number | null) => {
-    if (!seconds) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -314,7 +313,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
 
           {/* Video List Section */}
           <div className="rounded-lg bg-white p-6 shadow">
-            <div className="flex items-center justify-between">
+            <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
                   Your Video Collection
@@ -327,11 +326,11 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
             </div>
 
             {loadingVideos ? (
-              <div className="mt-6 flex justify-center py-12">
+              <div className="flex justify-center py-12">
                 <div className="text-sm text-gray-500">Loading videos...</div>
               </div>
             ) : videos.length === 0 ? (
-              <div className="mt-6 rounded-md border-2 border-dashed border-gray-300 p-12 text-center">
+              <div className="rounded-md border-2 border-dashed border-gray-300 p-12 text-center">
                 <svg
                   className="mx-auto h-12 w-12 text-gray-400"
                   fill="none"
@@ -353,74 +352,11 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                 </p>
               </div>
             ) : (
-              <div className="mt-6 divide-y divide-gray-200">
-                {videos.map((video) => (
-                  <div
-                    key={video.id}
-                    className="flex items-center gap-4 py-4 transition-colors hover:bg-gray-50"
-                  >
-                    {/* Thumbnail - Left */}
-                    <div className="relative h-20 w-32 flex-shrink-0 overflow-hidden rounded-md bg-gray-200">
-                      {video.thumbnail_url ? (
-                        <Image
-                          src={video.thumbnail_url}
-                          alt={video.title || "Video thumbnail"}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <svg
-                            className="h-8 w-8 text-gray-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                      {/* Duration Badge */}
-                      <div className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white">
-                        {formatDuration(video.duration_seconds)}
-                      </div>
-                    </div>
-
-                    {/* Content - Middle */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-gray-900 line-clamp-2">
-                        {video.title}
-                      </h3>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-                        <span>Watched: {video.watch_count}×</span>
-                        {video.made_for_kids && (
-                          <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-green-800">
-                            Kids
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons - Right */}
-                    <div className="flex-shrink-0">
-                      <button
-                        onClick={() => handleDeleteVideo(video.id)}
-                        disabled={deletingVideoId === video.id}
-                        className="rounded-md bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        aria-label={`Remove ${video.title} from collection`}
-                      >
-                        {deletingVideoId === video.id ? "Removing..." : "Remove"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <DataTable
+                columns={videoColumns}
+                data={videos}
+                onDeleteSelected={handleBulkDelete}
+              />
             )}
           </div>
         </div>
