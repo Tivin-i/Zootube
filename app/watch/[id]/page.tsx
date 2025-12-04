@@ -23,6 +23,7 @@ export default function WatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPlayButton, setShowPlayButton] = useState(true);
   const [showBreakModal, setShowBreakModal] = useState(false);
+  const [isDone, setIsDone] = useState(false);
 
   const playerRef = useRef<any>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
@@ -204,8 +205,24 @@ export default function WatchPage() {
     }
   };
 
-  // Handle continue watching button
-  const handleContinueWatching = () => {
+  // Handle going back to current video
+  const handleBackToVideo = () => {
+    setShowBreakModal(false);
+    setIsDone(false);
+    setShowPlayButton(true);
+    // Reset player if needed
+    if (playerRef.current) {
+      playerRef.current.seekTo(0);
+    }
+  };
+
+  // Handle "I'm done" button
+  const handleDone = () => {
+    setIsDone(true);
+  };
+
+  // Handle "Watch other video" button
+  const handleWatchOtherVideo = () => {
     router.push("/");
   };
 
@@ -338,43 +355,109 @@ export default function WatchPage() {
 
       {/* Take a Break Modal */}
       {showBreakModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 p-4">
-          <div className="w-full max-w-md space-y-8 text-center">
-            {/* Icon */}
-            <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-              <svg
-                className="h-20 w-20 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 p-6">
+          {!isDone ? (
+            /* Default State - Show 3 options */
+            <div className="flex h-full w-full max-w-2xl flex-col items-center justify-between py-8">
+              {/* Top spacing */}
+              <div className="flex-1"></div>
+
+              {/* Option 1: Back to Current Video - CENTER (Most Prominent) */}
+              <div className="flex flex-col items-center gap-6">
+                <h2 className="text-3xl font-bold text-white sm:text-4xl">
+                  Take a Break?
+                </h2>
+
+                {/* Video Thumbnail - Clickable */}
+                <button
+                  onClick={handleBackToVideo}
+                  className="group relative overflow-hidden rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95"
+                  aria-label="Continue watching this video"
+                >
+                  {video?.thumbnail_url && (
+                    <div className="relative h-48 w-80 sm:h-56 sm:w-96">
+                      <Image
+                        src={video.thumbnail_url}
+                        alt={video.title || "Video thumbnail"}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      {/* Play Icon Overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 transition-all group-hover:bg-black/20">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/90 shadow-xl transition-all group-hover:scale-110">
+                          <svg
+                            className="ml-1 h-10 w-10 text-blue-600"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                      {/* Hint text */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                        <p className="text-center text-sm font-semibold text-white">
+                          👆 Tap to watch again
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              </div>
+
+              {/* Bottom section with 2 buttons */}
+              <div className="w-full max-w-md space-y-4">
+                {/* Option 2: I'm Done - MAIN CTA (Large and prominent) */}
+                <button
+                  onClick={handleDone}
+                  className="w-full rounded-full bg-green-500 px-8 py-5 text-2xl font-bold text-white shadow-2xl transition-all hover:scale-105 hover:bg-green-400 active:scale-95"
+                >
+                  ✓ I'm Done!
+                </button>
+
+                {/* Option 3: Watch Other Video - Small, bottom (Discouraged) */}
+                <button
+                  onClick={handleWatchOtherVideo}
+                  className="w-full rounded-full bg-white/20 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/30 active:scale-95"
+                >
+                  Watch Other Video
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Done State - Celebration Screen */
+            <div className="flex h-full w-full max-w-md flex-col items-center justify-center space-y-8 text-center">
+              {/* Celebration Icon */}
+              <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-full bg-yellow-400 shadow-2xl">
+                <svg
+                  className="h-24 w-24 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                </svg>
+              </div>
+
+              {/* Celebration Message */}
+              <div className="space-y-4">
+                <h2 className="text-5xl font-bold text-white sm:text-6xl">
+                  Well Done!
+                </h2>
+                <p className="text-2xl text-white/90">
+                  See you next time! 👋
+                </p>
+              </div>
+
+              {/* Option 3: Watch Other Video - Still available */}
+              <button
+                onClick={handleWatchOtherVideo}
+                className="rounded-full bg-white px-12 py-4 text-lg font-bold text-blue-600 shadow-2xl transition-all hover:scale-105 active:scale-95"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+                Watch Other Video
+              </button>
             </div>
-
-            {/* Message */}
-            <div className="space-y-4">
-              <h2 className="text-4xl font-bold text-white sm:text-5xl">
-                Time to Take a Break?
-              </h2>
-              <p className="text-xl text-white/90">
-                Great job watching! Ready to pick another video?
-              </p>
-            </div>
-
-            {/* Button */}
-            <button
-              onClick={handleContinueWatching}
-              className="mx-auto block rounded-full bg-white px-12 py-4 text-lg font-bold text-blue-600 shadow-2xl transition-all hover:scale-105 hover:shadow-3xl active:scale-95"
-            >
-              Continue Watching
-            </button>
-          </div>
+          )}
         </div>
       )}
     </div>

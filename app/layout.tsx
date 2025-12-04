@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Chewy } from "next/font/google";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -13,14 +13,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const chewy = Chewy({
+  weight: "400",
+  variable: "--font-chewy",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "SafeTube - Curated Videos for Kids",
+  title: "ZooTube - Curated Videos for Kids",
   description: "A safe, parent-curated YouTube video platform for children. Parents manage a whitelist of approved videos.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "SafeTube",
+    title: "ZooTube",
   },
   formatDetection: {
     telephone: false,
@@ -47,7 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${chewy.variable} antialiased`}
       >
         <ErrorBoundary>{children}</ErrorBoundary>
       </body>

@@ -60,7 +60,7 @@ export default function SignupPage() {
             Create Parent Account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign up to manage your SafeTube videos
+            Sign up to manage your ZooTube videos
           </p>
         </div>
 

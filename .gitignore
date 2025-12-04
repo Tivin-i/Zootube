@@ -25,6 +25,10 @@
 *.pem
 .temp/
 
+# project files
+/screenshots
+/design
+
 # debug
 npm-debug.log*
 yarn-debug.log*

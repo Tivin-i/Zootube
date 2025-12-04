@@ -57,7 +57,7 @@ export default function LinkDevicePage() {
             </svg>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-            Welcome to SafeTube
+            Welcome to ZooTube
           </h2>
           <p className="mt-3 text-lg text-gray-600">
             Enter your parent's email to link this device
@@ -124,7 +124,7 @@ export default function LinkDevicePage() {
 
           <div className="mt-6 text-center text-sm text-gray-600">
             <p>
-              Don't have a SafeTube account?
+              Don't have a ZooTube account?
               <br />
               Ask your parent to create one at{" "}
               <a
