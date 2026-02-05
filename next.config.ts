@@ -11,9 +11,16 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   },
 });
 
+// Bundle analyzer (only when ANALYZE env var is set)
+const withBundleAnalyzer = require("@next/bundle-analyzer")({
+  enabled: process.env.ANALYZE === "true",
+});
+
 const nextConfig: NextConfig = {
   // Explicitly enable turbopack (silences the warning)
   turbopack: {},
+  // Enable standalone output for Docker
+  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -28,6 +35,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Optimize bundle size
+  experimental: {
+    optimizePackageImports: ["lucide-react", "@tanstack/react-table"],
+  },
 };
 
-export default withPWA(nextConfig);
+export default withBundleAnalyzer(withPWA(nextConfig));

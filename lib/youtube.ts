@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { cache, getYouTubeMetadataCacheKey, CACHE_TTL } from "@/lib/utils/cache";
 
 const youtube = google.youtube({
   version: "v3",
@@ -53,10 +54,18 @@ function parseDuration(duration: string): number {
 
 /**
  * Fetch video metadata from YouTube Data API
+ * Results are cached for 24 hours to reduce API calls
  */
 export async function getVideoMetadata(
   videoId: string
 ): Promise<YouTubeVideoMetadata | null> {
+  // Check cache first
+  const cacheKey = getYouTubeMetadataCacheKey(videoId);
+  const cached = cache.get<YouTubeVideoMetadata>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   try {
     const response = await youtube.videos.list({
       part: ["snippet", "contentDetails", "status"],
@@ -76,7 +85,7 @@ export async function getVideoMetadata(
       return null;
     }
 
-    return {
+    const metadata: YouTubeVideoMetadata = {
       id: videoId,
       title: snippet.title || "Untitled Video",
       thumbnailUrl:
@@ -87,6 +96,11 @@ export async function getVideoMetadata(
       durationSeconds: parseDuration(contentDetails.duration || "PT0S"),
       madeForKids: status?.madeForKids || false,
     };
+
+    // Cache the result for 24 hours
+    cache.set(cacheKey, metadata, CACHE_TTL.YOUTUBE_METADATA);
+
+    return metadata;
   } catch (error) {
     console.error("Error fetching YouTube video metadata:", error);
     return null;

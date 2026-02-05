@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { formatDurationFromISO } from "@/lib/utils/duration";
+import { MAX_VIDEOS_PER_BATCH } from "@/lib/utils/constants";
 
 interface VideoPreview {
   videoId: string;
@@ -19,20 +21,6 @@ interface VideoSelectorProps {
   loading?: boolean;
   totalLoaded: number;
 }
-
-const formatDuration = (isoDuration: string) => {
-  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return "0:00";
-
-  const hours = parseInt(match[1] || "0");
-  const minutes = parseInt(match[2] || "0");
-  const seconds = parseInt(match[3] || "0");
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-  }
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-};
 
 export default function VideoSelector({
   videos,
@@ -81,9 +69,9 @@ export default function VideoSelector({
             {selected.size} of {videos.length} selected
           </span>
         </div>
-        {totalLoaded >= 100 && (
+        {totalLoaded >= MAX_VIDEOS_PER_BATCH && (
           <span className="text-sm text-amber-600">
-            Maximum 100 videos loaded
+            Maximum {MAX_VIDEOS_PER_BATCH} videos loaded
           </span>
         )}
       </div>
@@ -116,7 +104,7 @@ export default function VideoSelector({
                   unoptimized
                 />
                 <div className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-xs font-medium text-white">
-                  {formatDuration(video.duration)}
+                  {formatDurationFromISO(video.duration)}
                 </div>
               </div>
 
@@ -137,13 +125,13 @@ export default function VideoSelector({
       </div>
 
       {/* Load More */}
-      {hasMore && totalLoaded < 100 && (
+      {hasMore && totalLoaded < MAX_VIDEOS_PER_BATCH && (
         <button
           onClick={onLoadMore}
           disabled={loading}
           className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Loading..." : `Load More (${totalLoaded}/100)`}
+          {loading ? "Loading..." : `Load More (${totalLoaded}/${MAX_VIDEOS_PER_BATCH})`}
         </button>
       )}
     </div>

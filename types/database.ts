@@ -26,10 +26,48 @@ export interface Database {
           created_at?: string;
         };
       };
+      households: {
+        Row: {
+          id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          created_at?: string;
+        };
+      };
+      household_members: {
+        Row: {
+          household_id: string;
+          parent_id: string;
+          role: string;
+          joined_at: string;
+        };
+        Insert: {
+          household_id: string;
+          parent_id: string;
+          role?: string;
+          joined_at?: string;
+        };
+        Update: {
+          household_id?: string;
+          parent_id?: string;
+          role?: string;
+          joined_at?: string;
+        };
+      };
       videos: {
         Row: {
           id: string;
-          parent_id: string;
+          household_id: string;
+          added_by: string | null;
           youtube_id: string;
           title: string | null;
           thumbnail_url: string | null;
@@ -41,7 +79,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          parent_id: string;
+          household_id: string;
+          added_by?: string | null;
           youtube_id: string;
           title?: string | null;
           thumbnail_url?: string | null;
@@ -53,7 +92,8 @@ export interface Database {
         };
         Update: {
           id?: string;
-          parent_id?: string;
+          household_id?: string;
+          added_by?: string | null;
           youtube_id?: string;
           title?: string | null;
           thumbnail_url?: string | null;
@@ -64,9 +104,38 @@ export interface Database {
           created_at?: string;
         };
       };
+      youtube_connections: {
+        Row: {
+          id: string;
+          household_id: string;
+          encrypted_refresh_token: string;
+          youtube_channel_id: string | null;
+          linked_at: string;
+          linked_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          encrypted_refresh_token: string;
+          youtube_channel_id?: string | null;
+          linked_at?: string;
+          linked_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          household_id?: string;
+          encrypted_refresh_token?: string;
+          youtube_channel_id?: string | null;
+          linked_at?: string;
+          linked_by?: string | null;
+        };
+      };
     };
   };
 }
 
 export type Video = Database["public"]["Tables"]["videos"]["Row"];
 export type Parent = Database["public"]["Tables"]["parents"]["Row"];
+export type Household = Database["public"]["Tables"]["households"]["Row"];
+export type HouseholdMember = Database["public"]["Tables"]["household_members"]["Row"];
+export type YoutubeConnection = Database["public"]["Tables"]["youtube_connections"]["Row"];

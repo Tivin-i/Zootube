@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
+import { youtubeBatchSchema } from "@/lib/validators/youtube.validator";
+import { handleApiError } from "@/lib/utils/error-handler";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { UnauthorizedError } from "@/lib/errors/app-errors";
+import { createClient } from "@/lib/supabase/server";
 
 const youtube = google.youtube({
   version: "v3",
@@ -54,13 +59,29 @@ function parseYouTubeUrl(url: string): {
 
 export async function POST(request: NextRequest) {
   try {
-    const { url, pageToken } = await request.json();
+    await applyRateLimit(request, "videoAdd");
 
-    if (!url) {
-      return NextResponse.json({ error: "URL is required" }, { status: 400 });
+    // Check authentication
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new UnauthorizedError("Authentication required");
     }
 
-    const parsed = parseYouTubeUrl(url);
+    const body = await request.json();
+    const { pageToken } = body;
+
+    // Validate input
+    const validated = youtubeBatchSchema.parse({
+      url: body.url,
+      parent_id: user.id,
+      pageToken: body.pageToken,
+    });
+
+    const parsed = parseYouTubeUrl(validated.url);
 
     if (!parsed.type || !parsed.id) {
       return NextResponse.json(
@@ -81,18 +102,24 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Video not found" }, { status: 404 });
       }
 
-      return NextResponse.json({
-        type: "video",
-        videos: [
-          {
-            videoId: video.id,
-            title: video.snippet?.title,
-            thumbnailUrl: video.snippet?.thumbnails?.medium?.url,
-            duration: video.contentDetails?.duration,
-            madeForKids: video.status?.madeForKids || false,
-          },
-        ],
-      });
+      return new Response(
+        JSON.stringify({
+          type: "video",
+          videos: [
+            {
+              videoId: video.id,
+              title: video.snippet?.title,
+              thumbnailUrl: video.snippet?.thumbnails?.medium?.url,
+              duration: video.contentDetails?.duration,
+              madeForKids: video.status?.madeForKids || false,
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Handle playlist
@@ -101,7 +128,7 @@ export async function POST(request: NextRequest) {
         part: ["snippet", "contentDetails"],
         playlistId: parsed.id,
         maxResults: 20,
-        pageToken: pageToken || undefined,
+        pageToken: validated.pageToken || undefined,
       });
 
       const videoIds = response.data.items?.map(
@@ -122,12 +149,18 @@ export async function POST(request: NextRequest) {
         madeForKids: video.status?.madeForKids || false,
       }));
 
-      return NextResponse.json({
-        type: "playlist",
-        videos,
-        nextPageToken: response.data.nextPageToken,
-        totalResults: response.data.pageInfo?.totalResults,
-      });
+      return new Response(
+        JSON.stringify({
+          type: "playlist",
+          videos,
+          nextPageToken: response.data.nextPageToken,
+          totalResults: response.data.pageInfo?.totalResults,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Handle channel
@@ -167,7 +200,7 @@ export async function POST(request: NextRequest) {
         part: ["snippet", "contentDetails"],
         playlistId: uploadsPlaylistId,
         maxResults: 20,
-        pageToken: pageToken || undefined,
+        pageToken: validated.pageToken || undefined,
       });
 
       const videoIds = response.data.items?.map(
@@ -188,23 +221,22 @@ export async function POST(request: NextRequest) {
         madeForKids: video.status?.madeForKids || false,
       }));
 
-      return NextResponse.json({
-        type: "channel",
-        videos,
-        nextPageToken: response.data.nextPageToken,
-        totalResults: response.data.pageInfo?.totalResults,
-      });
+      return new Response(
+        JSON.stringify({
+          type: "channel",
+          videos,
+          nextPageToken: response.data.nextPageToken,
+          totalResults: response.data.pageInfo?.totalResults,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
-    return NextResponse.json(
-      { error: "Unsupported URL type" },
-      { status: 400 }
-    );
-  } catch (error: any) {
-    console.error("YouTube batch fetch error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch videos" },
-      { status: 500 }
-    );
+    return handleApiError(new Error("Unsupported URL type"));
+  } catch (error) {
+    return handleApiError(error);
   }
 }

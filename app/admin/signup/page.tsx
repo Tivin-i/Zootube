@@ -12,7 +12,6 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClient();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +20,7 @@ export default function SignupPage() {
     setMessage(null);
 
     try {
+      const supabase = createClient();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -46,7 +46,14 @@ export default function SignupPage() {
         }
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during signup");
+      const message = err?.message ?? "An error occurred during signup";
+      if (message === "Failed to fetch" || message.toLowerCase().includes("failed to fetch")) {
+        setError(
+          "Could not reach the authentication server. Check your internet connection and ensure Supabase is configured (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env or .env.local). Restart the dev server after changing env files."
+        );
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -62,6 +69,11 @@ export default function SignupPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Sign up to manage your ZooTube videos
           </p>
+          {process.env.NODE_ENV === "development" && (
+            <p className="mt-1 text-center text-xs text-amber-600" title="Only visible in development">
+              Supabase: {process.env.NEXT_PUBLIC_SUPABASE_URL ? "URL set" : "URL not set"} · {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "key set" : "key not set"}
+            </p>
+          )}
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSignup}>

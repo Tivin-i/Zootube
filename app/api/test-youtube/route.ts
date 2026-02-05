@@ -1,35 +1,38 @@
-import { NextRequest, NextResponse } from "next/server";
-import { validateYouTubeUrl } from "@/lib/youtube";
+import { NextRequest } from "next/server";
+import { youtubeService } from "@/lib/services/youtube.service";
+import { handleApiError } from "@/lib/utils/error-handler";
+import { youtubeUrlSchema } from "@/lib/validators/video.validator";
 
 export async function POST(request: NextRequest) {
   try {
-    const { url } = await request.json();
+    const body = await request.json();
+    const { url } = body;
 
     if (!url) {
-      return NextResponse.json(
-        { error: "YouTube URL is required" },
-        { status: 400 }
-      );
+      return handleApiError(new Error("YouTube URL is required"));
     }
 
-    const metadata = await validateYouTubeUrl(url);
+    // Validate URL format
+    youtubeUrlSchema.parse(url);
+
+    // Get metadata using service
+    const metadata = await youtubeService.getVideoMetadata(url);
 
     if (!metadata) {
-      return NextResponse.json(
-        { error: "Invalid YouTube URL or video not found" },
-        { status: 404 }
-      );
+      return handleApiError(new Error("Invalid YouTube URL or video not found"));
     }
 
-    return NextResponse.json({
-      success: true,
-      metadata,
-    });
-  } catch (error: any) {
-    console.error("YouTube API test error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch video metadata" },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({
+        success: true,
+        metadata,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
     );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

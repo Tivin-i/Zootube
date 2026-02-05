@@ -4,7 +4,7 @@ This guide will walk you through setting up the SafeTube application.
 
 ## Prerequisites
 
-- Node.js 18+ installed
+- **Node.js 20+** (required for Next.js 16 and E2E tests; 18 is not supported)
 - npm or yarn package manager
 - A Supabase account (free tier works)
 - A Google Cloud account for YouTube API
@@ -139,6 +139,21 @@ create trigger on_auth_user_created
    - Choose "YouTube Data API v3"
    - Save
 
+### 3.4 YouTube OAuth (optional – connect child's YouTube account)
+
+To let parents link a YouTube account per household (e.g. for future playlist import):
+
+1. Go to **APIs & Services** > **Credentials**
+2. Click **Create Credentials** > **OAuth client ID**
+3. If prompted, configure the **OAuth consent screen** (User type: External; add scopes if required)
+4. Application type: **Web application**
+5. Add **Authorized redirect URI**: `https://your-domain.com/api/auth/youtube/callback`  
+   For local dev: `http://localhost:3000/api/auth/youtube/callback`
+6. Create and copy the **Client ID** and **Client secret**
+7. In your app env (Step 4), set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, and `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example`)
+
+Run the `youtube_connections` migration (see README or migrations folder) so the feature can store linked accounts.
+
 ## Step 4: Configure Environment Variables
 
 1. Open `.env.local` in the project root
@@ -152,6 +167,12 @@ SUPABASE_SERVICE_ROLE_KEY=eyJxxxxx...
 
 # YouTube Data API v3
 YOUTUBE_API_KEY=AIzaSyxxxxx...
+
+# Optional: YouTube OAuth (connect child's account per household)
+# GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+# GOOGLE_CLIENT_SECRET=xxxxx
+# APP_URL=http://localhost:3000
+# YOUTUBE_OAUTH_ENCRYPTION_KEY=your-32-char-or-longer-secret
 ```
 
 ## Step 5: Run the Application
@@ -170,6 +191,20 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 2. Create a parent account
 3. Check your email for verification (if enabled in Supabase)
 4. You should be redirected to the admin dashboard
+
+### Running E2E tests
+
+E2E tests require **Node 20+** and a running app. They start the dev server on **port 3001** automatically (or use an existing server when not in CI).
+
+```bash
+# Install Playwright browsers (once)
+npx playwright install --with-deps chromium
+
+# Run E2E (Chromium)
+npm run test:e2e
+```
+
+Tests use mocks for APIs where possible; some flows (e.g. full device linking with DB) may need Supabase and env vars. See [README.md](README.md#e2e-tests) and [DOCKER_E2E_README.md](DOCKER_E2E_README.md) for CI and Docker.
 
 ## Troubleshooting
 

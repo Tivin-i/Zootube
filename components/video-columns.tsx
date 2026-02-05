@@ -4,13 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Video } from "@/types/database";
 import Image from "next/image";
 import { SortableHeader } from "./ui/data-table";
-
-const formatDuration = (seconds: number | null) => {
-  if (!seconds) return "0:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
+import { formatDuration } from "@/lib/utils/duration";
 
 export const videoColumns: ColumnDef<Video>[] = [
   {

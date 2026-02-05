@@ -1,11 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Video } from "@/types/database";
 import KidsHeader from "@/components/KidsHeader";
-import VideoModal from "@/components/VideoModal";
+import { useHouseholdId } from "@/lib/hooks/useHouseholdId";
+import { formatDuration } from "@/lib/utils/duration";
+import { DEFAULT_CHILD_NAME } from "@/lib/utils/constants";
+import { createClient } from "@/lib/supabase/client";
+
+// Lazy load VideoModal to reduce initial bundle size
+// Only load when a video is selected
+const VideoModal = dynamic(() => import("@/components/VideoModal"), {
+  loading: () => null, // No loading state needed as modal opens after selection
+  ssr: false, // VideoModal is client-side only
+});
 
 export default function Home() {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -14,27 +25,62 @@ export default function Home() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
+  const { householdId, loading: householdIdLoading, refetch } = useHouseholdId();
+  const sessionLinkAttemptedRef = useRef(false);
 
   useEffect(() => {
-    // Check if device is linked to a parent
-    const parentId = localStorage.getItem("safetube_parent_id");
-
-    if (!parentId) {
-      // Redirect to link device page if not linked
-      router.push("/link-device");
+    if (householdId) {
+      sessionLinkAttemptedRef.current = false;
+      fetchVideos(householdId);
       return;
     }
 
-    // Fetch videos for this parent
-    fetchVideos(parentId);
-  }, [router]);
+    if (householdIdLoading) {
+      return;
+    }
 
-  const fetchVideos = async (parentId: string) => {
+    if (sessionLinkAttemptedRef.current) {
+      return;
+    }
+    sessionLinkAttemptedRef.current = true;
+
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) {
+        const householdsRes = await fetch("/api/households");
+        if (householdsRes.ok) {
+          const { households } = await householdsRes.json();
+          if (households?.length > 0) {
+            const defaultHousehold = households[0];
+            const res = await fetch("/api/device-token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                householdId: defaultHousehold.id,
+                parentId: session.user.id,
+              }),
+            });
+            if (res.ok) {
+              await refetch();
+              fetchVideos(defaultHousehold.id);
+              return;
+            }
+          }
+        }
+      }
+      router.push("/link-device");
+    })();
+  }, [router, householdId, householdIdLoading, refetch]);
+
+  const fetchVideos = async (householdId: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/videos?parent_id=${parentId}`);
+      const response = await fetch(`/api/videos?household_id=${householdId}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -42,18 +88,11 @@ export default function Home() {
       }
 
       setVideos(data.videos || []);
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDuration = (seconds: number | null) => {
-    if (!seconds) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleVideoClick = (video: Video) => {
@@ -69,9 +108,9 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-amber-700 border-t-transparent"></div>
-          <p className="text-lg font-medium text-amber-900">Loading videos...</p>
+        <div className="text-center" data-testid="loading-state">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-amber-700 border-t-transparent" data-testid="loading-spinner" aria-hidden="true" />
+          <p className="text-lg font-medium text-amber-900" aria-live="polite">Loading videos…</p>
         </div>
       </div>
     );
@@ -79,18 +118,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
-      <KidsHeader showUserMenu={true} childName="Zoe" />
+      <KidsHeader showUserMenu={true} childName={DEFAULT_CHILD_NAME} />
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {error && (
-          <div className="mb-6 rounded-xl bg-red-50 p-4 shadow-md">
+          <div className="mb-6 rounded-xl bg-red-50 p-4 shadow-md" role="alert" aria-live="polite" data-testid="error-message">
             <p className="text-sm text-red-800">{error}</p>
           </div>
         )}
 
         {videos.length === 0 ? (
-          <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="flex min-h-[60vh] items-center justify-center" data-testid="empty-state">
             <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
               <svg
                 className="mx-auto h-24 w-24 text-amber-700"
@@ -119,8 +158,9 @@ export default function Home() {
               <button
                 key={video.id}
                 onClick={() => handleVideoClick(video)}
-                className="group block overflow-hidden rounded-2xl bg-white shadow-md transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2"
+                className="group block overflow-hidden rounded-2xl bg-white shadow-md transition-all hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                 aria-label={`Watch ${video.title}`}
+                data-testid="video-card"
               >
                 {/* Thumbnail */}
                 <div className="relative aspect-video w-full overflow-hidden bg-gray-200">

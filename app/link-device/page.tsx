@@ -3,38 +3,105 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type HouseholdOption = { id: string; name: string };
+
 export default function LinkDevicePage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState<"email" | "household">("email");
+  const [households, setHouseholds] = useState<HouseholdOption[]>([]);
+  const [parentId, setParentId] = useState<string | null>(null);
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleLinkDevice = async (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(false);
 
     try {
-      const response = await fetch(
+      const lookupResponse = await fetch(
         `/api/parent-by-email?email=${encodeURIComponent(email)}`
       );
-      const data = await response.json();
+      const lookupData = await lookupResponse.json();
 
-      if (!response.ok) {
-        setError(data.error || "Failed to find parent account");
+      if (!lookupResponse.ok) {
+        if (lookupResponse.status === 404) {
+          setError(
+            "No account found with this email. Please check the email address or ask your parent to create an account."
+          );
+        } else if (lookupResponse.status === 429) {
+          setError(
+            "Too many requests. Please wait a moment and try again."
+          );
+        } else if (lookupResponse.status === 400) {
+          setError(
+            "Please enter a valid email address."
+          );
+        } else {
+          setError(lookupData.error || "Failed to find parent account. Please try again.");
+        }
         return;
       }
 
-      // Store parent ID in localStorage
-      localStorage.setItem("safetube_parent_id", data.parentId);
+      const householdList = lookupData.households || [];
+      setHouseholds(householdList);
+      setParentId(lookupData.parentId);
 
-      // Redirect to home feed
-      router.push("/");
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+      if (householdList.length === 1) {
+        setSelectedHouseholdId(householdList[0].id);
+        await linkDevice(householdList[0].id, lookupData.parentId);
+      } else {
+        setSelectedHouseholdId(householdList[0]?.id ?? null);
+        setStep("household");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An error occurred. Please try again.";
+      setError(message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const linkDevice = async (householdId: string, parentIdValue: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const tokenResponse = await fetch("/api/device-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ householdId, parentId: parentIdValue }),
+      });
+
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenResponse.ok) {
+        setError(tokenData.error || "Failed to link device. Please try again.");
+        return;
+      }
+
+      // Show success message before redirecting
+      setSuccess(true);
+      
+      // Redirect to home feed after a brief delay
+      setTimeout(() => {
+        router.push("/");
+      }, 1500);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An error occurred. Please try again.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleHouseholdSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedHouseholdId || !parentId) return;
+    await linkDevice(selectedHouseholdId, parentId);
   };
 
   return (
@@ -65,7 +132,8 @@ export default function LinkDevicePage() {
         </div>
 
         <div className="rounded-lg bg-white p-8 shadow-lg">
-          <form onSubmit={handleLinkDevice} className="space-y-6">
+          {step === "email" ? (
+          <form onSubmit={handleEmailSubmit} className="space-y-6">
             <div>
               <label
                 htmlFor="email"
@@ -80,6 +148,7 @@ export default function LinkDevicePage() {
                   type="email"
                   autoComplete="email"
                   required
+                  data-testid="link-device-email"
                   className="block w-full rounded-md border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                   placeholder="parent@example.com"
                   value={email}
@@ -89,13 +158,14 @@ export default function LinkDevicePage() {
             </div>
 
             {error && (
-              <div className="rounded-md bg-red-50 p-4">
+              <div className="rounded-md bg-red-50 p-4" role="alert" aria-live="polite" data-testid="link-device-error">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg
                       className="h-5 w-5 text-red-400"
                       viewBox="0 0 20 20"
                       fill="currentColor"
+                      aria-hidden="true"
                     >
                       <path
                         fillRule="evenodd"
@@ -105,7 +175,36 @@ export default function LinkDevicePage() {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-red-800">{error}</p>
+                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                    <p className="mt-1 text-sm text-red-700">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-md bg-green-50 p-4" role="status" aria-live="polite" data-testid="link-device-success">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-green-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-green-800">
+                      Device Linked Successfully!
+                    </h3>
+                    <p className="mt-1 text-sm text-green-700">
+                      Redirecting to your video collection...
+                    </p>
                   </div>
                 </div>
               </div>
@@ -114,13 +213,87 @@ export default function LinkDevicePage() {
             <div>
               <button
                 type="submit"
-                disabled={loading}
-                className="flex w-full justify-center rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={loading || success}
+                data-testid="link-device-submit"
+                className="flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? "Linking Device..." : "Link Device"}
+                {loading ? (
+                  <>
+                    <svg
+                      className="mr-2 h-4 w-4 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Linking device…
+                  </>
+                ) : success ? (
+                  "✓ Linked!"
+                ) : (
+                  "Continue"
+                )}
               </button>
             </div>
           </form>
+          ) : (
+          <form onSubmit={handleHouseholdSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="household" className="block text-sm font-medium text-gray-700">
+                Which video list?
+              </label>
+              <div className="mt-2">
+                <select
+                  id="household"
+                  name="household"
+                  required
+                  className="block w-full rounded-md border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                  value={selectedHouseholdId ?? ""}
+                  onChange={(e) => setSelectedHouseholdId(e.target.value)}
+                >
+                  {households.map((h) => (
+                    <option key={h.id} value={h.id}>{h.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {error && (
+              <div className="rounded-md bg-red-50 p-4" role="alert" aria-live="polite" data-testid="link-device-error">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setStep("email"); setError(null); }}
+                className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading || success}
+                data-testid="link-device-submit"
+                className="flex-1 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
+              >
+                {loading ? "Linking…" : success ? "✓ Linked!" : "Link Device"}
+              </button>
+            </div>
+          </form>
+          )}
 
           <div className="mt-6 text-center text-sm text-gray-600">
             <p>

@@ -1,53 +1,46 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { videoIdParamSchema } from "@/lib/validators/video.validator";
+import { handleApiError } from "@/lib/utils/error-handler";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { UnauthorizedError } from "@/lib/errors/app-errors";
+import { videoService } from "@/lib/services/video.service";
+import { householdService } from "@/lib/services/household.service";
 
-// DELETE /api/videos/[id] - Delete a video
+// DELETE /api/videos/[id] - Delete a video (requires auth and household membership)
 export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await applyRateLimit(request, "public");
+
     const supabase = await createClient();
 
-    // Check authentication
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      throw new UnauthorizedError("Authentication required");
     }
 
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = videoIdParamSchema.parse(params);
 
-    if (!id) {
-      return NextResponse.json(
-        { error: "Video ID is required" },
-        { status: 400 }
-      );
-    }
+    const video = await videoService.getVideoById(id);
+    await householdService.ensureMember(video.household_id, user.id);
 
-    // Delete video (RLS policy ensures user can only delete their own videos)
-    const { error } = await supabase
-      .from("videos")
-      .delete()
-      .eq("id", id)
-      .eq("parent_id", user.id);
+    await videoService.deleteVideo(id, video.household_id, user.id);
 
-    if (error) {
-      console.error("Error deleting video:", error);
-      return NextResponse.json(
-        { error: "Failed to delete video" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("Error in DELETE /api/videos/[id]:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ success: true }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
     );
+  } catch (error) {
+    return handleApiError(error);
   }
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { DEFAULT_CHILD_NAME } from "@/lib/utils/constants";
 
 interface KidsHeaderProps {
   showBackButton?: boolean;
@@ -13,15 +14,22 @@ interface KidsHeaderProps {
 export default function KidsHeader({
   showBackButton = false,
   showUserMenu = true,
-  childName = "Zoe",
+  childName = DEFAULT_CHILD_NAME,
 }: KidsHeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
   const router = useRouter();
 
-  const handleUnlinkDevice = () => {
+  const handleUnlinkDevice = async () => {
     if (confirm("Are you sure you want to unlink this device?")) {
-      localStorage.removeItem("safetube_parent_id");
-      router.push("/link-device");
+      try {
+        // Clear device token via API
+        await fetch("/api/device-token", { method: "DELETE" });
+        router.push("/link-device");
+      } catch (error) {
+        console.error("Failed to unlink device:", error);
+        // Still redirect even if API call fails
+        router.push("/link-device");
+      }
     }
     setShowMenu(false);
   };
@@ -35,7 +43,7 @@ export default function KidsHeader({
             {showBackButton && (
               <button
                 onClick={() => router.push("/")}
-                className="rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                className="rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                 aria-label="Go back to home"
               >
                 <svg
@@ -70,8 +78,9 @@ export default function KidsHeader({
             <div className="relative z-50">
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="flex items-center gap-2 rounded-full bg-yellow-100 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-yellow-200 sm:px-4"
+                className="flex items-center gap-2 rounded-full bg-yellow-100 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-yellow-200 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:px-4"
                 aria-label="User menu"
+                aria-expanded={showMenu}
               >
                 <svg
                   className="h-5 w-5"
