@@ -31,9 +31,11 @@ RUN if [ "$NEXT_PUBLIC_SUPABASE_URL" = "https://placeholder.supabase.co" ] || [ 
   echo "ERROR: Supabase is still using placeholders. Build args were not passed."; \
   echo "1. Create .env in the SAME directory as docker-compose.yml (see .env.example)"; \
   echo "2. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your real values"; \
-  echo "3. Run from that directory: docker compose build --no-cache"; \
+  echo "3. Run: ./scripts/docker-build.sh (from project root)"; \
   exit 1; \
 fi
+# So we can confirm in build logs that args were passed (length only, no leak)
+RUN echo "Build: NEXT_PUBLIC_SUPABASE_URL length=${#NEXT_PUBLIC_SUPABASE_URL}"
 
 # Build Next.js application
 RUN npm run build

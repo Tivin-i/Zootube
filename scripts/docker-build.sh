@@ -7,16 +7,21 @@ set -e
 cd "$(dirname "$0")/.."
 PROJECT_ROOT="$(pwd)"
 
-if [ ! -f "$PROJECT_ROOT/.env" ]; then
-  echo "ERROR: .env not found in $PROJECT_ROOT"
+# Prefer .env; fall back to .env.local so build works with either
+if [ -f "$PROJECT_ROOT/.env" ]; then
+  ENV_FILE="$PROJECT_ROOT/.env"
+elif [ -f "$PROJECT_ROOT/.env.local" ]; then
+  ENV_FILE="$PROJECT_ROOT/.env.local"
+  echo "Note: Using .env.local. For 'docker compose up' to pass env into the container, create .env: cp .env.local .env"
+else
+  echo "ERROR: No .env or .env.local in $PROJECT_ROOT"
   echo "Copy .env.example to .env and set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY"
   exit 1
 fi
 
-# Load .env and export so docker-compose sees them for build-arg substitution
 set -a
 # shellcheck source=/dev/null
-source "$PROJECT_ROOT/.env"
+source "$ENV_FILE"
 set +a
 
 if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]; then
@@ -31,5 +36,8 @@ if [ "$NEXT_PUBLIC_SUPABASE_URL" = "https://placeholder.supabase.co" ] || [ "$NE
 fi
 
 echo "Building with Supabase URL from .env (no-cache)..."
-docker compose build --no-cache
+docker compose build --no-cache \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY"
 echo "Done. Start with: docker compose up -d"
+echo "To verify env in container: docker compose run --rm safetube-app sh -c 'echo SUPABASE_URL=\$NEXT_PUBLIC_SUPABASE_URL'"

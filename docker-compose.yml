@@ -1,19 +1,24 @@
-# Supabase URL and anon key must be in .env (same dir as this file) and passed at BUILD time.
-# Easiest: run ./scripts/docker-build.sh (it loads .env and runs docker compose build --no-cache).
+# Supabase URL and anon key must be in .env (same dir as this file).
+# Docker Compose loads .env from the CURRENT WORKING DIRECTORY for ${VAR} substitution,
+# so always run: cd /path/to/safetube && docker compose up --build
+# If you only have .env.local, copy it: cp .env.local .env
 services:
   safetube:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        # Values come from .env when you run "docker compose build" from this directory
         - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     container_name: safetube-app
     ports:
       - "10100:3000"
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s

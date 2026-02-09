@@ -54,6 +54,11 @@ export default function LoginPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Sign in to manage your ZooTube videos
           </p>
+          {process.env.NODE_ENV === "development" && (
+            <p className="mt-1 text-center text-xs text-amber-600" title="Only visible in development">
+              Supabase: {process.env.NEXT_PUBLIC_SUPABASE_URL ? "URL set" : "URL not set"} · {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "key set" : "key not set"}
+            </p>
+          )}
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
