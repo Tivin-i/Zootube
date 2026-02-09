@@ -24,6 +24,7 @@ This folder contains all project documentation for SafeTube (ZooTube). The root 
 | [ADR-002: Service and repository layers](ADR-002-service-and-repository-layers.md) | API → service → repository; thin routes. |
 | [Multi-parent video sharing architecture](MULTI_PARENT_VIDEO_SHARING_ARCHITECTURE.md) | Shared video whitelist and sync across multiple parents/guardians. |
 | [YouTube OAuth architecture](YOUTUBE_OAUTH_ARCHITECTURE.md) | Connecting a child's YouTube account per household (OAuth flow, storage). |
+| [Child account OAuth](CHILD_ACCOUNT_OAUTH.md) | Child accounts section: YouTube connection and linked children (Google identity OAuth). |
 
 ## Reviews & plans
 

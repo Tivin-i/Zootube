@@ -84,13 +84,15 @@ The app needs your Supabase URL and anon key **at image build time** (they are b
 
 For the **link-device** flow and kids’ home/watch pages to work, the app must have the **parents**, **households**, and **household_members** tables in Supabase (and optionally **device_tokens** for secure token validation).
 
-1. **Run the migrations** in your Supabase project (SQL Editor or CLI), in order:
-   - `migrations/001_create_parents_table_and_sync.sql` – creates `parents` and syncs from `auth.users`. Required so `/api/parent-by-email` can resolve a parent by email (e.g. after signup).
-   - `migrations/002_device_tokens_table.sql` – creates `device_tokens` so device linking uses DB-backed token validation. Optional but recommended; if you skip it, the app falls back to the legacy cookie-only flow (set `SUPABASE_SERVICE_ROLE_KEY` in `.env` only when using this migration).
-   - `migrations/003_households_and_members.sql` – creates `households` and `household_members`, keys videos and device_tokens by household. **Required** for device linking; without it you may see "Internal server error" or "Could not find the table 'public.household_members' in the schema cache" when linking a device.
-   - `migrations/004_youtube_connections.sql` – optional; required only for YouTube OAuth / channel linking.
+1. **Run the migration** in your Supabase project (SQL Editor or CLI):
+   - `migrations/001_schema.sql` – creates the full schema: `parents` (synced with auth.users), `households`, `household_members`, `videos`, `device_tokens`, `youtube_connections`, `household_children`, plus RLS and backfills. Required for device linking, admin dashboard, and YouTube OAuth.
 
-2. After running `001_...`, existing Auth users are backfilled into `parents`. After `003_...`, one household per parent is created and videos/device_tokens are backfilled to use `household_id`. New signups are synced automatically. If “Parent account not found” appears when linking a device, confirm the parent’s email in **Authentication → Users** matches and that the migrations have been run.
+### Troubleshooting
+
+- **"Could not find the table 'public.household_members' in the schema cache"** (or "Failed to fetch household members: ... schema cache")  
+  The schema has not been applied yet. Run **`migrations/001_schema.sql`** in your Supabase project: open [Supabase Dashboard → SQL Editor](https://app.supabase.com/project/_/sql), paste the contents of `migrations/001_schema.sql`, and run it. Then retry the flow (e.g. link device or admin dashboard).
+
+2. After running `001_schema.sql`, existing Auth users are backfilled into `parents` and one household per parent is created. New signups are synced automatically. If “Parent account not found” appears when linking a device, confirm the parent’s email in **Authentication → Users** matches and that the migrations have been run.
 
 ## E2E tests
 

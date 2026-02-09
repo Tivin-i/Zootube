@@ -1,0 +1,101 @@
+import { google } from "googleapis";
+import crypto from "crypto";
+
+const STATE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+const CHILD_STATE_TYPE = "child";
+
+const SCOPES = [
+  "openid",
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+];
+
+export interface ChildOAuthStatePayload {
+  type: string;
+  householdId: string;
+  parentId: string;
+  nonce: string;
+  exp?: number;
+}
+
+function getSigningKey(): Buffer {
+  const key = process.env.YOUTUBE_OAUTH_ENCRYPTION_KEY;
+  if (!key) throw new Error("YOUTUBE_OAUTH_ENCRYPTION_KEY required for child OAuth state signing");
+  return Buffer.from(key.slice(0, 32), "utf8");
+}
+
+export function createSignedChildState(payload: Omit<ChildOAuthStatePayload, "type" | "exp">): string {
+  const exp = Date.now() + STATE_EXPIRY_MS;
+  const full: ChildOAuthStatePayload = { ...payload, type: CHILD_STATE_TYPE, exp };
+  const json = JSON.stringify(full);
+  const hmac = crypto.createHmac("sha256", getSigningKey());
+  hmac.update(json);
+  const sig = hmac.digest("hex");
+  const encoded = Buffer.from(json, "utf8").toString("base64url");
+  return `${encoded}.${sig}`;
+}
+
+export function verifyAndDecodeChildState(signedState: string): ChildOAuthStatePayload {
+  const parts = signedState.split(".");
+  if (parts.length !== 2) throw new Error("Invalid state format");
+  const [encoded, sig] = parts;
+  const json = Buffer.from(encoded, "base64url").toString("utf8");
+  const hmac = crypto.createHmac("sha256", getSigningKey());
+  hmac.update(json);
+  if (!crypto.timingSafeEqual(Buffer.from(hmac.digest("hex")), Buffer.from(sig))) {
+    throw new Error("Invalid state signature");
+  }
+  const payload = JSON.parse(json) as ChildOAuthStatePayload & { exp: number };
+  if (payload.type !== CHILD_STATE_TYPE) throw new Error("Invalid state type");
+  if (Date.now() > payload.exp) throw new Error("State expired");
+  if (!payload.householdId || !payload.parentId) throw new Error("Invalid state payload");
+  return payload;
+}
+
+function getChildRedirectUri(): string {
+  const base = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+  return `${base.replace(/\/$/, "")}/api/auth/child/callback`;
+}
+
+export function createChildAuthUrl(state: string): string {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not set");
+
+  const oauth2Client = new google.auth.OAuth2(
+    clientId,
+    process.env.GOOGLE_CLIENT_SECRET,
+    getChildRedirectUri()
+  );
+  return oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    prompt: "consent",
+    scope: SCOPES,
+    state,
+  });
+}
+
+export interface ChildUserInfo {
+  sub: string;
+  email: string | null;
+  display_name: string | null;
+}
+
+export async function exchangeCodeForUserInfo(code: string): Promise<ChildUserInfo> {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = getChildRedirectUri();
+  if (!clientId || !clientSecret) throw new Error("Google OAuth credentials not configured");
+
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const { tokens } = await oauth2Client.getToken(code);
+  oauth2Client.setCredentials(tokens);
+
+  const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+  const { data } = await oauth2.userinfo.get();
+
+  return {
+    sub: data.id ?? "",
+    email: data.email ?? null,
+    display_name: data.name ?? null,
+  };
+}

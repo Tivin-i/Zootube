@@ -7,11 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **Device linking "Internal server error"**: The link-device flow requires the `household_members` (and `households`) table. If you see "Could not find the table 'public.household_members' in the schema cache", run migration `migrations/003_households_and_members.sql` in your Supabase project (SQL Editor). README device-linking section updated to list migrations 003 and 004 and to state that 003 is required for device linking.
-
 ### Added
+
+- **Migrations squashed:** All schema migrations are now a single file `migrations/001_schema.sql` (parents, device_tokens, households, household_members, videos, youtube_connections, household_children, RLS, backfills). Idempotent; safe to re-run. README device-linking and troubleshooting updated to reference `001_schema.sql`.
+
+- **Troubleshooting (README):** New "Troubleshooting" subsection under Device linking: documents the "Could not find the table 'public.household_members' in the schema cache" error and fix (run `migrations/001_schema.sql` in Supabase SQL Editor).
+
+- **Migration 003 (households and members):** Safe to run on greenfield DB where `videos` or `device_tokens` do not exist. If `public.videos` is missing, the migration creates it with the final schema (household_id, added_by, youtube_id, etc.). If `public.device_tokens` is missing, the migration skips adding `household_id` to it. Existing DBs with `videos` (and optional `device_tokens`) still get the same backfill and RLS as before.
+
+- **Child accounts section and linked children OAuth (parent admin dashboard)**
+  - New **Child accounts** section in the admin dashboard groups the existing YouTube connection and a new **Linked children** block.
+  - **Child's YouTube account:** Copy updated to "Child's YouTube account" / "Connect the YouTube account for this list (e.g. your child's). One per list."
+  - **Linked children:** Parents can link a child's Google account (identity only: openid, email, profile) to the household. New table `household_children` (migration `005_household_children.sql`): `household_id`, `google_sub`, `email`, `display_name`, `linked_at`, `linked_by`; unique per `(household_id, google_sub)`; RLS for household members.
+  - **API:** `GET /api/auth/child?household_id=...` (redirects to Google OAuth), `GET /api/auth/child/callback` (exchanges code, upserts child, redirects to `/admin?child=connected` or `?child=error`), `GET /api/children?household_id=...` (list), `DELETE /api/children/[id]` (remove). All require auth and household membership.
+  - **Services:** `lib/services/child-oauth.service.ts` (state signing, auth URL, exchange code for userinfo), `lib/services/child-connection.service.ts` (list, link from state, delete). Repository `lib/repositories/household-children.repository.ts`.
+  - **UI:** `LinkedChildrenBlock` with Add child / Remove; `useLinkedChildren` hook; child toast handling in AdminDashboard.
+  - **Docs:** `docs/CHILD_ACCOUNT_OAUTH.md`. Google Cloud: add redirect URI `.../api/auth/child/callback` for the same OAuth client.
 
 - **Docker env and auth**
   - README: step to copy `.env.local` to `.env` for Docker (Compose only loads `.env`); step to verify env in container with `docker compose run --rm safetube-app sh -c 'echo SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL'` (single quotes so the variable is expanded inside the container). Note that plain `docker run` does not load `.env`—use `docker compose up` or `docker run --env-file .env`. New "Still Could not reach the authentication server?" troubleshooting: use `./scripts/docker-build.sh`, then check `curl -s http://localhost:10100/api/health` for `supabase_configured`.
@@ -52,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Security:** Signed OAuth state (HMAC) with expiry; refresh token encrypted at rest (AES-256-GCM); scope `youtube.readonly` only; rate limiting on OAuth and connection routes.
   - **Env:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example` and docs/setup.md).
   - **Docs:** `docs/YOUTUBE_OAUTH_ARCHITECTURE.md`, `docs/YOUTUBE_OAUTH_SECURITY_REVIEW.md`. docs/setup.md updated with optional OAuth setup (Step 3.4).
+
+### Fixed
+
+- **Device linking "Internal server error"**: The link-device flow requires the `household_members` (and `households`) table. If you see "Could not find the table 'public.household_members' in the schema cache", run migration `migrations/003_households_and_members.sql` in your Supabase project (SQL Editor). README device-linking section updated to list migrations 003 and 004 and to state that 003 is required for device linking.
 
 ### Changed
 

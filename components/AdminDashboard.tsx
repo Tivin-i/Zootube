@@ -9,7 +9,9 @@ import VideoAddForm from "@/components/admin/VideoAddForm";
 import AnalyticsSection from "@/components/admin/AnalyticsSection";
 import VideoListSection from "@/components/admin/VideoListSection";
 import YouTubeConnectionBlock from "@/components/admin/YouTubeConnectionBlock";
+import LinkedChildrenBlock from "@/components/admin/LinkedChildrenBlock";
 import { useYoutubeConnection } from "@/lib/hooks/useYoutubeConnection";
+import { useLinkedChildren } from "@/lib/hooks/useLinkedChildren";
 
 interface HouseholdOption {
   id: string;
@@ -40,6 +42,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const [totalPages, setTotalPages] = useState(0);
 
   const [youtubeToast, setYoutubeToast] = useState<"connected" | "error" | null>(null);
+  const [childToast, setChildToast] = useState<"connected" | "error" | null>(null);
   const searchParams = useSearchParams();
 
   const {
@@ -51,6 +54,15 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     disconnect: handleDisconnectYouTube,
   } = useYoutubeConnection(selectedHouseholdId);
 
+  const {
+    children: linkedChildren,
+    loading: childrenLoading,
+    error: childrenError,
+    fetchChildren: fetchLinkedChildren,
+    addChild: handleAddChild,
+    removeChild: handleRemoveChild,
+  } = useLinkedChildren(selectedHouseholdId);
+
   useEffect(() => {
     const youtube = searchParams.get("youtube");
     if (youtube === "connected" || youtube === "error") {
@@ -61,6 +73,15 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchYoutubeStatus runs after URL replace; avoid deps loop
   }, [searchParams]);
 
+  useEffect(() => {
+    const child = searchParams.get("child");
+    if (child === "connected" || child === "error") {
+      setChildToast(child);
+      router.replace("/admin", { scroll: false });
+      if (child === "connected") fetchLinkedChildren();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchLinkedChildren runs after URL replace; avoid deps loop
+  }, [searchParams]);
 
   useEffect(() => {
     if (youtubeToast) {
@@ -68,6 +89,13 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       return () => clearTimeout(t);
     }
   }, [youtubeToast]);
+
+  useEffect(() => {
+    if (childToast) {
+      const t = setTimeout(() => setChildToast(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [childToast]);
 
   useEffect(() => {
     (async () => {
@@ -241,16 +269,28 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           </div>
         </div>
 
-          {/* YouTube connection */}
-          <YouTubeConnectionBlock
-            householdId={selectedHouseholdId}
-            status={youtubeStatus}
-            loading={youtubeLoading}
-            error={youtubeError}
-            onConnect={handleConnectYouTube}
-            onDisconnect={handleDisconnectYouTube}
-            toast={youtubeToast}
-          />
+          {/* Child accounts section */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Child accounts</h2>
+            <YouTubeConnectionBlock
+              householdId={selectedHouseholdId}
+              status={youtubeStatus}
+              loading={youtubeLoading}
+              error={youtubeError}
+              onConnect={handleConnectYouTube}
+              onDisconnect={handleDisconnectYouTube}
+              toast={youtubeToast}
+            />
+            <LinkedChildrenBlock
+              householdId={selectedHouseholdId}
+              children={linkedChildren}
+              loading={childrenLoading}
+              error={childrenError}
+              onAddChild={handleAddChild}
+              onRemoveChild={handleRemoveChild}
+              toast={childToast}
+            />
+          </div>
 
           {/* Add Video Section */}
           {selectedHouseholdId && (

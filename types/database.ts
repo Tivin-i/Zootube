@@ -130,6 +130,35 @@ export interface Database {
           linked_by?: string | null;
         };
       };
+      household_children: {
+        Row: {
+          id: string;
+          household_id: string;
+          google_sub: string;
+          email: string | null;
+          display_name: string | null;
+          linked_at: string;
+          linked_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          google_sub: string;
+          email?: string | null;
+          display_name?: string | null;
+          linked_at?: string;
+          linked_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          household_id?: string;
+          google_sub?: string;
+          email?: string | null;
+          display_name?: string | null;
+          linked_at?: string;
+          linked_by?: string | null;
+        };
+      };
     };
   };
 }
@@ -139,3 +168,4 @@ export type Parent = Database["public"]["Tables"]["parents"]["Row"];
 export type Household = Database["public"]["Tables"]["households"]["Row"];
 export type HouseholdMember = Database["public"]["Tables"]["household_members"]["Row"];
 export type YoutubeConnection = Database["public"]["Tables"]["youtube_connections"]["Row"];
+export type HouseholdChild = Database["public"]["Tables"]["household_children"]["Row"];
