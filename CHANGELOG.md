@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Migration 001_schema.sql grants:** Added explicit `GRANT USAGE ON SCHEMA public` and `GRANT SELECT/INSERT/UPDATE/DELETE` on `households`, `household_members`, `videos`, `youtube_connections`, `household_children`, `device_tokens` to `authenticated`, and `GRANT SELECT ON public.parents` to `anon` and `authenticated`, plus `GRANT EXECUTE` on the RLS helper functions, so the API no longer returns "permission denied for table household_members" when using the anon key with a logged-in user.
+
+- **Migration 001_schema.sql idempotency:** Backfill steps that reference `parent_id` on `videos` and `device_tokens` now run only when that column exists (check via `information_schema.columns`), avoiding "column parent_id does not exist" when re-running the migration after a previous run already dropped `parent_id`.
+
+- **RLS infinite recursion on `household_members`:** Policies on `household_members` (and others that depended on it) used a subquery on `household_members` themselves, causing "infinite recursion detected in policy for relation household_members". Migration `001_schema.sql` now defines SECURITY DEFINER helpers `public.current_user_household_ids()` and `public.current_user_owner_household_ids()`; all RLS policies use these instead of querying `household_members` directly in the policy expression.
+
 ### Added
 
 - **Migrations squashed:** All schema migrations are now a single file `migrations/001_schema.sql` (parents, device_tokens, households, household_members, videos, youtube_connections, household_children, RLS, backfills). Idempotent; safe to re-run. README device-linking and troubleshooting updated to reference `001_schema.sql`.

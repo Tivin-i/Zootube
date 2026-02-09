@@ -109,13 +109,16 @@ BEGIN
     ALTER TABLE public.videos
       ADD COLUMN IF NOT EXISTS household_id UUID REFERENCES public.households(id) ON DELETE CASCADE,
       ADD COLUMN IF NOT EXISTS added_by UUID REFERENCES public.parents(id) ON DELETE SET NULL;
-    UPDATE public.videos SET household_id = parent_id, added_by = parent_id WHERE household_id IS NULL;
+    -- Backfill from parent_id only if that column still exists (e.g. first migration from old schema)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'videos' AND column_name = 'parent_id') THEN
+      UPDATE public.videos SET household_id = parent_id, added_by = parent_id WHERE household_id IS NULL;
+      ALTER TABLE public.videos DROP COLUMN IF EXISTS parent_id;
+    END IF;
     ALTER TABLE public.videos ALTER COLUMN household_id SET NOT NULL;
     IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'videos_parent_id_youtube_id_key' AND conrelid = 'public.videos'::regclass) THEN
       ALTER TABLE public.videos DROP CONSTRAINT videos_parent_id_youtube_id_key;
     END IF;
     ALTER TABLE public.videos ADD CONSTRAINT videos_household_id_youtube_id_key UNIQUE (household_id, youtube_id);
-    ALTER TABLE public.videos DROP COLUMN IF EXISTS parent_id;
   END IF;
 END $$;
 
@@ -126,10 +129,35 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'device_tokens') THEN
     ALTER TABLE public.device_tokens ADD COLUMN IF NOT EXISTS household_id UUID REFERENCES public.households(id) ON DELETE CASCADE;
-    UPDATE public.device_tokens SET household_id = parent_id WHERE household_id IS NULL;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'device_tokens' AND column_name = 'parent_id') THEN
+      UPDATE public.device_tokens SET household_id = parent_id WHERE household_id IS NULL;
+    END IF;
     ALTER TABLE public.device_tokens ALTER COLUMN household_id SET NOT NULL;
   END IF;
 END $$;
+
+-- =============================================================================
+-- 5b. RLS helpers: current user household IDs (avoids recursion on household_members)
+-- =============================================================================
+CREATE OR REPLACE FUNCTION public.current_user_household_ids()
+RETURNS SETOF uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT household_id FROM public.household_members WHERE parent_id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.current_user_owner_household_ids()
+RETURNS SETOF uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT household_id FROM public.household_members WHERE parent_id = auth.uid() AND role = 'owner';
+$$;
 
 -- =============================================================================
 -- 6. RLS: households
@@ -139,7 +167,7 @@ ALTER TABLE public.households ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Household members can read household" ON public.households;
 CREATE POLICY "Household members can read household"
   ON public.households FOR SELECT
-  USING (id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (id IN (SELECT public.current_user_household_ids()));
 
 DROP POLICY IF EXISTS "Authenticated users can create household" ON public.households;
 CREATE POLICY "Authenticated users can create household"
@@ -149,7 +177,7 @@ CREATE POLICY "Authenticated users can create household"
 DROP POLICY IF EXISTS "Household owners can update household" ON public.households;
 CREATE POLICY "Household owners can update household"
   ON public.households FOR UPDATE
-  USING (id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid() AND role = 'owner'));
+  USING (id IN (SELECT public.current_user_owner_household_ids()));
 
 -- =============================================================================
 -- 7. RLS: household_members
@@ -159,17 +187,17 @@ ALTER TABLE public.household_members ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Household members can read members" ON public.household_members;
 CREATE POLICY "Household members can read members"
   ON public.household_members FOR SELECT
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (household_id IN (SELECT public.current_user_household_ids()));
 
 DROP POLICY IF EXISTS "Household owners can insert members" ON public.household_members;
 CREATE POLICY "Household owners can insert members"
   ON public.household_members FOR INSERT
-  WITH CHECK (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid() AND role = 'owner'));
+  WITH CHECK (household_id IN (SELECT public.current_user_owner_household_ids()));
 
 DROP POLICY IF EXISTS "Household owners can delete members" ON public.household_members;
 CREATE POLICY "Household owners can delete members"
   ON public.household_members FOR DELETE
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid() AND role = 'owner'));
+  USING (household_id IN (SELECT public.current_user_owner_household_ids()));
 
 -- =============================================================================
 -- 8. RLS: videos
@@ -179,8 +207,8 @@ DROP POLICY IF EXISTS "Parents manage own videos" ON public.videos;
 DROP POLICY IF EXISTS "Household members can manage videos" ON public.videos;
 CREATE POLICY "Household members can manage videos"
   ON public.videos FOR ALL
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()))
-  WITH CHECK (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (household_id IN (SELECT public.current_user_household_ids()))
+  WITH CHECK (household_id IN (SELECT public.current_user_household_ids()));
 
 COMMENT ON TABLE public.households IS 'Shared video list; multiple parents can be members.';
 COMMENT ON TABLE public.household_members IS 'Parents who can manage a household and its videos.';
@@ -204,23 +232,23 @@ ALTER TABLE public.youtube_connections ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Household members can read youtube_connections" ON public.youtube_connections;
 CREATE POLICY "Household members can read youtube_connections"
   ON public.youtube_connections FOR SELECT
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (household_id IN (SELECT public.current_user_household_ids()));
 
 DROP POLICY IF EXISTS "Household members can insert youtube_connections" ON public.youtube_connections;
 CREATE POLICY "Household members can insert youtube_connections"
   ON public.youtube_connections FOR INSERT
-  WITH CHECK (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  WITH CHECK (household_id IN (SELECT public.current_user_household_ids()));
 
 DROP POLICY IF EXISTS "Household members can update youtube_connections" ON public.youtube_connections;
 CREATE POLICY "Household members can update youtube_connections"
   ON public.youtube_connections FOR UPDATE
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()))
-  WITH CHECK (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (household_id IN (SELECT public.current_user_household_ids()))
+  WITH CHECK (household_id IN (SELECT public.current_user_household_ids()));
 
 DROP POLICY IF EXISTS "Household members can delete youtube_connections" ON public.youtube_connections;
 CREATE POLICY "Household members can delete youtube_connections"
   ON public.youtube_connections FOR DELETE
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (household_id IN (SELECT public.current_user_household_ids()));
 
 COMMENT ON TABLE public.youtube_connections IS 'Stores encrypted YouTube OAuth refresh tokens; one connection per household.';
 
@@ -244,22 +272,40 @@ ALTER TABLE public.household_children ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Household members can read household_children" ON public.household_children;
 CREATE POLICY "Household members can read household_children"
   ON public.household_children FOR SELECT
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (household_id IN (SELECT public.current_user_household_ids()));
 
 DROP POLICY IF EXISTS "Household members can insert household_children" ON public.household_children;
 CREATE POLICY "Household members can insert household_children"
   ON public.household_children FOR INSERT
-  WITH CHECK (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  WITH CHECK (household_id IN (SELECT public.current_user_household_ids()));
 
 DROP POLICY IF EXISTS "Household members can update household_children" ON public.household_children;
 CREATE POLICY "Household members can update household_children"
   ON public.household_children FOR UPDATE
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()))
-  WITH CHECK (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (household_id IN (SELECT public.current_user_household_ids()))
+  WITH CHECK (household_id IN (SELECT public.current_user_household_ids()));
 
 DROP POLICY IF EXISTS "Household members can delete household_children" ON public.household_children;
 CREATE POLICY "Household members can delete household_children"
   ON public.household_children FOR DELETE
-  USING (household_id IN (SELECT household_id FROM public.household_members WHERE parent_id = auth.uid()));
+  USING (household_id IN (SELECT public.current_user_household_ids()));
 
 COMMENT ON TABLE public.household_children IS 'Child Google accounts linked to a household via OAuth (identity only).';
+
+-- =============================================================================
+-- Grants for API roles (RLS still enforces row-level access)
+-- =============================================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
+GRANT SELECT ON public.parents TO anon, authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.households TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.household_members TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.videos TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.youtube_connections TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.household_children TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.device_tokens TO authenticated;
+
+GRANT EXECUTE ON FUNCTION public.current_user_household_ids() TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_owner_household_ids() TO authenticated, anon;
