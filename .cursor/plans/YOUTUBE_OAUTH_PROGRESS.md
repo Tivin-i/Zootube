@@ -39,7 +39,7 @@
 ## Task 4: Security + Docs — DONE
 
 - [x] Security review: `docs/YOUTUBE_OAUTH_SECURITY_REVIEW.md` (OWASP-style checks, state/token/RLS, APPROVE).
-- [x] SETUP.md: optional YouTube OAuth (Step 3.4), env vars in Step 4.
+- [x] docs/setup.md: optional YouTube OAuth (Step 3.4), env vars in Step 4.
 - [x] CHANGELOG.md: [Unreleased] entry for YouTube OAuth feature.
 
 ---

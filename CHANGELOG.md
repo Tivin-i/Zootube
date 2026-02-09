@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Device linking "Internal server error"**: The link-device flow requires the `household_members` (and `households`) table. If you see "Could not find the table 'public.household_members' in the schema cache", run migration `migrations/003_households_and_members.sql` in your Supabase project (SQL Editor). README device-linking section updated to list migrations 003 and 004 and to state that 003 is required for device linking.
+
 ### Added
 
+- **Docker env and auth**
+  - README: step to copy `.env.local` to `.env` for Docker (Compose only loads `.env`); step to verify env in container with `docker compose run --rm safetube-app sh -c 'echo SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL'` (single quotes so the variable is expanded inside the container). Note that plain `docker run` does not load `.env`—use `docker compose up` or `docker run --env-file .env`. New "Still Could not reach the authentication server?" troubleshooting: use `./scripts/docker-build.sh`, then check `curl -s http://localhost:10100/api/health` for `supabase_configured`.
+  - docker-compose.yml: comment that Compose loads `.env` from current working directory, so run from project root; and note to copy `.env.local` to `.env` if needed.
+  - scripts/docker-build.sh: build with explicit `--build-arg` so env is always passed; support `.env.local` when `.env` is missing (for build); after build, print the verify command for container env.
+  - Health API (`/api/health`): response now includes `supabase_configured` (true when `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set and not placeholders) for Docker debugging.
+  - Dockerfile: builder echoes length of `NEXT_PUBLIC_SUPABASE_URL` in build log so you can confirm build args were passed; error message updated to suggest `./scripts/docker-build.sh`.
+
 - **Phase 4 (App improvements plan – E2E hardening and docs)**
-  - **E2E docs:** README has new "E2E tests" section (Node 20+, port 3001, `npm run test:e2e`, CI, Docker link). SETUP.md: prerequisites Node 20+; "Running E2E tests" subsection with install and run commands.
+  - **E2E docs:** README has new "E2E tests" section (Node 20+, port 3001, `npm run test:e2e`, CI, Docker link). docs/setup.md: prerequisites Node 20+; "Running E2E tests" subsection with install and run commands.
   - **Admin login E2E:** New smoke spec `tests/e2e/admin-login.spec.ts` (login page loads, form and sign-up link visible). Admin login page: `data-testid="admin-login-email"`, `admin-login-password`, `admin-login-submit`, `admin-login-error`; loading copy "Signing in…" (ellipsis).
   - **E2E report:** Phase 4 update added to `docs/PHASE1_E2E_COVERAGE_AND_STABILITY.md` (data-testids and admin spec done; docs updated).
 
@@ -39,12 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New table `youtube_connections` (migration `004_youtube_connections.sql`): `household_id`, encrypted refresh token, optional `youtube_channel_id`, `linked_by`; RLS restricts access to household members.
   - **API:** `GET /api/auth/youtube?household_id=...` (redirects to Google OAuth), `GET /api/auth/youtube/callback` (exchanges code, stores connection, redirects to `/admin?youtube=connected` or `?youtube=error`), `GET /api/youtube-connection?household_id=...` (status), `DELETE /api/youtube-connection?household_id=...` (unlink). All require auth and household membership.
   - **Security:** Signed OAuth state (HMAC) with expiry; refresh token encrypted at rest (AES-256-GCM); scope `youtube.readonly` only; rate limiting on OAuth and connection routes.
-  - **Env:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example` and SETUP.md).
-  - **Docs:** `docs/YOUTUBE_OAUTH_ARCHITECTURE.md`, `docs/YOUTUBE_OAUTH_SECURITY_REVIEW.md`. SETUP.md updated with optional OAuth setup (Step 3.4).
+  - **Env:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example` and docs/setup.md).
+  - **Docs:** `docs/YOUTUBE_OAUTH_ARCHITECTURE.md`, `docs/YOUTUBE_OAUTH_SECURITY_REVIEW.md`. docs/setup.md updated with optional OAuth setup (Step 3.4).
 
 ### Changed
 
-- **Documentation:** Moved all plan documents into `plans/`: `ARCHITECTURE_ANALYSIS.md`, `DOCKER_E2E_PLAN.md`, `E2E_TEST_FIX_PLAN.md`, `IMPLEMENTATION_PLAN.md`, `implementation-plan.md`, and `docs/MULTI_PARENT_IMPLEMENTATION_PLAN.md` → `plans/MULTI_PARENT_IMPLEMENTATION_PLAN.md`. Updated references in CHANGELOG and E2E_TEST_EXECUTION_SUMMARY.
+- **Documentation:** All user-facing docs consolidated into `docs/`. SETUP.md → docs/setup.md, DOCKER_E2E_README.md → docs/docker-e2e.md, E2E_TEST_EXECUTION_SUMMARY.md → docs/e2e-execution-summary.md, safetube-prd.md → docs/prd.md. Added docs/README.md as documentation index. Root README now has a "Documentation" section linking to the index and key guides.
+
+- **Documentation:** Moved all plan documents into `plans/`: `ARCHITECTURE_ANALYSIS.md`, `DOCKER_E2E_PLAN.md`, `E2E_TEST_FIX_PLAN.md`, `IMPLEMENTATION_PLAN.md`, `implementation-plan.md`, and `docs/MULTI_PARENT_IMPLEMENTATION_PLAN.md` → `plans/MULTI_PARENT_IMPLEMENTATION_PLAN.md`. Updated references in CHANGELOG and docs/e2e-execution-summary.md.
 
 ### Added
 

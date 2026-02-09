@@ -75,7 +75,7 @@
 ### 🔴 CRITICAL: Node.js Version Mismatch
 - **Status**: BLOCKING
 - **Fix Required**: Upgrade Node.js to v20.x.x
-- **See**: `plans/E2E_TEST_FIX_PLAN.md` for detailed fix instructions
+- **See**: `.cursor/plans/E2E_TEST_FIX_PLAN.md` for detailed fix instructions
 
 ### ✅ RESOLVED: Port Conflict
 - **Status**: FIXED
@@ -122,8 +122,8 @@
 
 ## Files Created/Modified
 
-- ✅ `plans/E2E_TEST_FIX_PLAN.md` - Detailed fix plan
-- ✅ `E2E_TEST_EXECUTION_SUMMARY.md` - This file
+- ✅ `.cursor/plans/E2E_TEST_FIX_PLAN.md` - Detailed fix plan
+- ✅ `docs/e2e-execution-summary.md` - This file
 - ✅ `playwright.config.ts` - Updated port to 3001
 - ✅ `docker-compose.yml` - Updated port mapping
 

@@ -19,7 +19,7 @@
 
 ### Node.js
 - **Next.js 16** requires **Node >= 20.9.0**.
-- If Node 18 is used, the dev server may fail to start and E2E will fail (see E2E_TEST_FIX_PLAN.md).
+- If Node 18 is used, the dev server may fail to start and E2E will fail (see `.cursor/plans/E2E_TEST_FIX_PLAN.md`).
 - **Recommendation:** Use Node 20+ for local E2E; in CI use a matrix or Docker with Node 20.
 
 ### Docker (alternative)
@@ -111,4 +111,4 @@ No config change required for Phase 1; Phase 4 may add `data-testid` and optiona
 
 - **Selectors (Phase 3):** `data-testid` added on home (`loading-spinner`, `error-message`, `empty-state`, `video-card`), link-device (`link-device-email`, `link-device-submit`, `link-device-error`, `link-device-success`), watch (`loading-spinner`, `watch-error-state`, `video-title`). Page objects (HomePage, LinkDevicePage, WatchPage) updated to use them.
 - **Admin login:** Smoke spec added (`tests/e2e/admin-login.spec.ts`): login page loads, form and sign-up link visible. Admin login page has `data-testid="admin-login-email"`, `admin-login-password`, `admin-login-submit`, `admin-login-error`.
-- **Docs:** README and SETUP.md updated with E2E section (Node 20+, port 3001, `npm run test:e2e`, CI and Docker pointers).
+- **Docs:** README and docs/setup.md updated with E2E section (Node 20+, port 3001, `npm run test:e2e`, CI and Docker pointers).

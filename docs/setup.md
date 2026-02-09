@@ -152,7 +152,7 @@ To let parents link a YouTube account per household (e.g. for future playlist im
 6. Create and copy the **Client ID** and **Client secret**
 7. In your app env (Step 4), set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, and `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example`)
 
-Run the `youtube_connections` migration (see README or migrations folder) so the feature can store linked accounts.
+Run the `youtube_connections` migration (see [README](../README.md) or migrations folder) so the feature can store linked accounts.
 
 ## Step 4: Configure Environment Variables
 
@@ -204,7 +204,7 @@ npx playwright install --with-deps chromium
 npm run test:e2e
 ```
 
-Tests use mocks for APIs where possible; some flows (e.g. full device linking with DB) may need Supabase and env vars. See [README.md](README.md#e2e-tests) and [DOCKER_E2E_README.md](DOCKER_E2E_README.md) for CI and Docker.
+Tests use mocks for APIs where possible; some flows (e.g. full device linking with DB) may need Supabase and env vars. See [README](../README.md#e2e-tests) and [Docker & E2E guide](docker-e2e.md) for CI and Docker.
 
 ## Troubleshooting
 
@@ -235,4 +235,4 @@ Once setup is complete, you can proceed with Phase 2 of development:
 - Create admin dashboard
 - Implement video management
 
-See `safetube-prd.md` for the complete implementation plan.
+See [Product requirements (PRD)](prd.md) for the complete implementation plan.
