@@ -47,6 +47,9 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const [creatingHousehold, setCreatingHousehold] = useState(false);
   const searchParams = useSearchParams();
 
+  // Use first household when list has items but none selected yet (ensures OAuth + Add Video show)
+  const effectiveHouseholdId = selectedHouseholdId || (households.length > 0 ? households[0].id : null);
+
   const {
     status: youtubeStatus,
     loading: youtubeLoading,
@@ -54,7 +57,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     fetchStatus: fetchYoutubeStatus,
     connect: handleConnectYouTube,
     disconnect: handleDisconnectYouTube,
-  } = useYoutubeConnection(selectedHouseholdId);
+  } = useYoutubeConnection(effectiveHouseholdId);
 
   const {
     children: linkedChildren,
@@ -63,7 +66,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     fetchChildren: fetchLinkedChildren,
     addChild: handleAddChild,
     removeChild: handleRemoveChild,
-  } = useLinkedChildren(selectedHouseholdId);
+  } = useLinkedChildren(effectiveHouseholdId);
 
   useEffect(() => {
     const youtube = searchParams.get("youtube");
@@ -132,6 +135,13 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       setLoadingVideos(false);
     }
   }, [selectedHouseholdId, loadingHouseholds]);
+
+  // Sync selectedHouseholdId when we have households but none selected yet
+  useEffect(() => {
+    if (households.length > 0 && !selectedHouseholdId) {
+      setSelectedHouseholdId(households[0].id);
+    }
+  }, [households, selectedHouseholdId]);
 
   const fetchVideos = useCallback(async (page: number = currentPage) => {
     if (!selectedHouseholdId) return;
@@ -359,12 +369,12 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
             </div>
           )}
 
-          {/* Child accounts section */}
-          {households.length > 0 && (
+          {/* Child accounts section — show when we have at least one household */}
+          {effectiveHouseholdId && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900">Child accounts</h2>
             <YouTubeConnectionBlock
-              householdId={selectedHouseholdId}
+              householdId={effectiveHouseholdId}
               status={youtubeStatus}
               loading={youtubeLoading}
               error={youtubeError}
@@ -373,7 +383,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
               toast={youtubeToast}
             />
             <LinkedChildrenBlock
-              householdId={selectedHouseholdId}
+              householdId={effectiveHouseholdId}
               children={linkedChildren}
               loading={childrenLoading}
               error={childrenError}
@@ -385,9 +395,9 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           )}
 
           {/* Add Video Section */}
-          {selectedHouseholdId && (
+          {effectiveHouseholdId && (
           <VideoAddForm
-            householdId={selectedHouseholdId}
+            householdId={effectiveHouseholdId}
             onVideoAdded={fetchVideos}
             onError={(error) => {
               setAddError(error);
