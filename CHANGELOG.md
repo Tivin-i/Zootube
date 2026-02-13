@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Admin dashboard: OAuth options and Analytics/Video list not loading:** When the households API failed or returned an empty list, `selectedHouseholdId` stayed null, so the Child accounts section (YouTube and linked-children OAuth) and the video/analytics sections never loaded. Fixes: (1) Households fetch now uses `credentials: "include"` and exposes a retry on error. (2) When the list is empty, the dashboard shows a “No household yet” state with a form to create the first household. (3) When no household is selected, video/analytics loading state is cleared so the UI does not show an endless “Loading…”. (4) Safety notice JSX structure corrected so the main content stays inside the layout container. (5) Child accounts and OAuth blocks are shown only when at least one household exists.
+
+### Changed
+
+- **Docker runs in development mode:** Dockerfile no longer runs a production build; it installs deps, copies source, and runs `next dev`. Production builds are done by Cloudflare when building from the repo. Docker Compose build args for `NEXT_PUBLIC_*` removed (env is provided at runtime via `.env` and `environment`). Health check start period increased to 15s for dev server startup.
+
+- **Docker skips Cloudflare dev init:** In Docker, `initOpenNextCloudflareForDev()` is skipped via `SKIP_CLOUDFLARE_DEV_INIT=1` so the Cloudflare workerd binary is never spawned. workerd is glibc-only and fails on Alpine (musl) with "fcntl64: symbol not found". Cloudflare bindings still work when running `next dev` on the host.
+
+- **allowedDevOrigins from APP_URL:** When `APP_URL` is set, it is used to populate `allowedDevOrigins` in dev so access from that origin (e.g. http://host:10100 when using Docker) does not trigger the cross-origin warning.
+
 ### Added
 
 - **Terms and Conditions and Privacy Policy:** New legal pages at `/terms` and `/privacy` with content tailored to Voobi (curated kids video). Terms cover definitions, eligibility, account and device linking, license, content/YouTube, acceptable use, termination, disclaimers, and changes. Privacy policy states no demographic or gender data collection; analytics limited to country, pages visited, and duration of visit; optional future use of aggregated watch statistics for recommendations with policy update; COPPA- and GDPR-aligned sections (data controller, retention, rights, children, recipients). Links added to landing footer and admin login; signup requires agreement to Terms and Privacy Policy via checkbox.

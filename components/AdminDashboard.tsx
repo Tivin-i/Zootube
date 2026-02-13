@@ -43,6 +43,8 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
 
   const [youtubeToast, setYoutubeToast] = useState<"connected" | "error" | null>(null);
   const [childToast, setChildToast] = useState<"connected" | "error" | null>(null);
+  const [householdsError, setHouseholdsError] = useState<string | null>(null);
+  const [creatingHousehold, setCreatingHousehold] = useState(false);
   const searchParams = useSearchParams();
 
   const {
@@ -97,30 +99,47 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     }
   }, [childToast]);
 
-  useEffect(() => {
-    (async () => {
-      setLoadingHouseholds(true);
-      try {
-        const res = await fetch("/api/households");
-        const data = await res.json();
-        if (res.ok && data.households?.length > 0) {
-          setHouseholds(data.households);
-          setSelectedHouseholdId((prev) => prev ?? data.households[0].id);
+  const fetchHouseholds = useCallback(async () => {
+    setHouseholdsError(null);
+    setLoadingHouseholds(true);
+    try {
+      const res = await fetch("/api/households", { credentials: "include" });
+      const data = await res.json();
+      if (res.ok) {
+        const list = Array.isArray(data.households) ? data.households : [];
+        setHouseholds(list);
+        if (list.length > 0) {
+          setSelectedHouseholdId((prev) => prev ?? list[0].id);
         }
-      } catch (error) {
-        console.error("Error fetching households:", error);
-      } finally {
-        setLoadingHouseholds(false);
+      } else {
+        setHouseholdsError(data.error ?? "Unable to load households");
       }
-    })();
+    } catch (error) {
+      console.error("Error fetching households:", error);
+      setHouseholdsError("Unable to load households. Please try again.");
+    } finally {
+      setLoadingHouseholds(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchHouseholds();
+  }, [fetchHouseholds]);
+
+  // When no household is selected, stop showing loading for videos/analytics
+  useEffect(() => {
+    if (!selectedHouseholdId && !loadingHouseholds) {
+      setLoadingVideos(false);
+    }
+  }, [selectedHouseholdId, loadingHouseholds]);
 
   const fetchVideos = useCallback(async (page: number = currentPage) => {
     if (!selectedHouseholdId) return;
     setLoadingVideos(true);
     try {
       const response = await fetch(
-        `/api/videos?household_id=${selectedHouseholdId}&page=${page}&limit=${pageSize}`
+        `/api/videos?household_id=${selectedHouseholdId}&page=${page}&limit=${pageSize}`,
+        { credentials: "include" }
       );
       const data = await response.json();
 
@@ -189,6 +208,34 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     await supabase.auth.signOut();
     router.push("/admin/login");
     router.refresh();
+  };
+
+  const handleCreateHousehold = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const name = (form.elements.namedItem("household-name") as HTMLInputElement)?.value?.trim() || "My list";
+    setCreatingHousehold(true);
+    setHouseholdsError(null);
+    try {
+      const res = await fetch("/api/households", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok && data.household) {
+        await fetchHouseholds();
+        setSelectedHouseholdId(data.household.id);
+      } else {
+        setHouseholdsError(data.error ?? "Failed to create household");
+      }
+    } catch (err) {
+      console.error("Create household error:", err);
+      setHouseholdsError("Failed to create household. Please try again.");
+    } finally {
+      setCreatingHousehold(false);
+    }
   };
 
   return (
@@ -265,11 +312,55 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                     kid-safe channels.
                   </p>
                 </div>
+              </div>
+            </div>
           </div>
-          </div>
-        </div>
+
+          {/* Household error or empty state */}
+          {!loadingHouseholds && householdsError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-medium text-red-800">{householdsError}</p>
+              <button
+                type="button"
+                onClick={() => fetchHouseholds()}
+                className="mt-2 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {!loadingHouseholds && !householdsError && households.length === 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow">
+              <h2 className="text-lg font-semibold text-gray-900">No household yet</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Create a household to manage videos and connect child accounts.
+              </p>
+              <form onSubmit={handleCreateHousehold} className="mt-4 flex flex-wrap items-center gap-3">
+                <label htmlFor="household-name" className="sr-only">
+                  Household name
+                </label>
+                <input
+                  id="household-name"
+                  name="household-name"
+                  type="text"
+                  defaultValue="My list"
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="Household name"
+                  disabled={creatingHousehold}
+                />
+                <button
+                  type="submit"
+                  disabled={creatingHousehold}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                >
+                  {creatingHousehold ? "Creating…" : "Create household"}
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* Child accounts section */}
+          {households.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900">Child accounts</h2>
             <YouTubeConnectionBlock
@@ -291,6 +382,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
               toast={childToast}
             />
           </div>
+          )}
 
           {/* Add Video Section */}
           {selectedHouseholdId && (
