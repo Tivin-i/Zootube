@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Cloudflare build OOM:** Set `NODE_OPTIONS=--max-old-space-size=4096` in `build:cloudflare` so the Next.js/TypeScript step has a 4GB heap and no longer hits "JavaScript heap out of memory" on Cloudflare's build environment.
+
 - **npm audit and deprecation warnings:** Ran `npm audit fix` (resolved 2 low-severity issues: qs, webpack). Added `overrides` in `package.json`: `glob` → `^12.0.0` (removes glob@7/9 and inflight), `source-map` → `^0.7.4` (replaces deprecated 0.6.x and 0.8.0-beta), `sourcemap-codec` → `npm:@jridgewell/sourcemap-codec@^1.4.15` (API-compatible replacement). Build and tests pass. Remaining transitive deprecations (whatwg-encoding, node-domexception) come from jsdom and formdata-node and will clear when those upstream packages update.
 
 - **Supabase Auth leaked password protection:** Lint "Leaked Password Protection Disabled" is resolved by enabling the feature in the Supabase dashboard (Authentication → Providers → Email). Documented in docs/setup.md §2.3. Requires Pro plan or above.

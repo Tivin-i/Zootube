@@ -10,7 +10,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "build:cloudflare": "BUILD_FOR_CLOUDFLARE=1 opennextjs-cloudflare build",
+    "build:cloudflare": "NODE_OPTIONS=--max-old-space-size=4096 BUILD_FOR_CLOUDFLARE=1 opennextjs-cloudflare build",
     "preview": "npm run build:cloudflare && opennextjs-cloudflare preview",
     "deploy:cloudflare": "npm run build:cloudflare && opennextjs-cloudflare deploy",
     "upload:cloudflare": "npm run build:cloudflare && opennextjs-cloudflare upload",
