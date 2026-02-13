@@ -174,6 +174,9 @@ YOUTUBE_API_KEY=AIzaSyxxxxx...
 # GOOGLE_CLIENT_SECRET=xxxxx
 # APP_URL=http://103.167.150.103:10100  # or your Voobi URL
 # YOUTUBE_OAUTH_ENCRYPTION_KEY=your-32-char-or-longer-secret
+
+# Optional: beta invite code – when set, only users with this code can sign up (leave empty for open signup)
+# BETA_INVITE_CODE=
 ```
 
 ## Step 5: Run the Application
