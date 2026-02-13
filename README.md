@@ -1,3 +1,7 @@
+# Voobi
+
+**Curated YouTube for kids.** Parents whitelist channels and videos; kids get a focused feed—nothing else.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -70,7 +74,7 @@ The app needs your Supabase URL and anon key **at image build time** (they are b
 
 5. **Verify env inside the container** (use single quotes so the variable is expanded inside the container, not on the host):
    ```bash
-   docker compose run --rm safetube-app sh -c 'echo SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL'
+   docker compose run --rm voobi-app sh -c 'echo SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL'
    ```
    If this prints `SUPABASE_URL=` with nothing after it, the container has no URL: ensure `.env` exists in the project root and run `docker compose up --build` from that directory. Do not use plain `docker run` without `--env-file .env`—Compose is what injects `.env` into the container.
 

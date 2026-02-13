@@ -1,6 +1,6 @@
 # Documentation Index
 
-This folder contains all project documentation for SafeTube (ZooTube). The root [README](../README.md) links here as the central hub for docs.
+This folder contains all project documentation for Voobi. The root [README](../README.md) links here as the central hub for docs.
 
 ## Getting started
 

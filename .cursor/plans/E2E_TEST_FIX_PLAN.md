@@ -162,7 +162,7 @@ node --version  # Should be v20.x.x
 npm --version
 
 # Reinstall dependencies with correct Node version
-cd /opt/safetube
+cd /opt/voobi
 rm -rf node_modules package-lock.json
 npm install
 ```

@@ -2,10 +2,10 @@ import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { childConnectionService } from "@/lib/services/child-connection.service";
+import { getAppUrl } from "@/lib/utils/app-url";
 
 function adminRedirect(status: "connected" | "error"): Response {
-  const base = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-  const url = `${base.replace(/\/$/, "")}/admin?child=${status}`;
+  const url = `${getAppUrl()}/admin?child=${status}`;
   return Response.redirect(url);
 }
 

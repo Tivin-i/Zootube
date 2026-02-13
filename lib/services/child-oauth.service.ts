@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import crypto from "crypto";
+import { getAppUrl } from "@/lib/utils/app-url";
 
 const STATE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const CHILD_STATE_TYPE = "child";
@@ -53,8 +54,7 @@ export function verifyAndDecodeChildState(signedState: string): ChildOAuthStateP
 }
 
 function getChildRedirectUri(): string {
-  const base = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}/api/auth/child/callback`;
+  return `${getAppUrl()}/api/auth/child/callback`;
 }
 
 export function createChildAuthUrl(state: string): string {

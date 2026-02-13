@@ -1,4 +1,4 @@
--- Single migration: full schema for SafeTube (parents, households, videos, device tokens, YouTube, children).
+-- Single migration: full schema for Voobi (parents, households, videos, device tokens, YouTube, children).
 -- Run once in Supabase SQL Editor. Idempotent: safe to re-run (uses IF NOT EXISTS / DROP IF EXISTS where applicable).
 
 -- =============================================================================
@@ -24,7 +24,7 @@ BEGIN
   VALUES (NEW.id, NEW.email, NEW.created_at);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

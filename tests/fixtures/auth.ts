@@ -1,8 +1,8 @@
 import { Page } from '@playwright/test';
 
 // Cookie names must match the app (lib/utils/constants.ts)
-const DEVICE_TOKEN_COOKIE_NAME = 'safetube_device_token';
-const PARENT_ID_COOKIE_NAME = 'safetube_parent_id_secure';
+const DEVICE_TOKEN_COOKIE_NAME = 'voobi_device_token';
+const PARENT_ID_COOKIE_NAME = 'voobi_parent_id_secure';
 
 /**
  * Authentication fixtures and helpers for E2E tests

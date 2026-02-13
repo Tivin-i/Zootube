@@ -1,6 +1,6 @@
-# SafeTube Setup Guide
+# Voobi Setup Guide
 
-This guide will walk you through setting up the SafeTube application.
+This guide will walk you through setting up the Voobi application.
 
 ## Prerequisites
 
@@ -24,7 +24,7 @@ npm install
 1. Go to [https://supabase.com](https://supabase.com) and sign in
 2. Click **"New Project"**
 3. Fill in:
-   - **Name**: `safetube`
+   - **Name**: `voobi`
    - **Database Password**: Generate and save securely
    - **Region**: Choose closest to you
 4. Click **"Create new project"** and wait ~2 minutes
@@ -92,7 +92,7 @@ begin
   values (new.id, new.email);
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 -- Trigger to create parent record when user signs up
 create trigger on_auth_user_created
@@ -104,9 +104,10 @@ create trigger on_auth_user_created
 
 1. Go to **Authentication** > **Providers**
 2. Ensure **Email** provider is enabled
-3. Go to **Authentication** > **URL Configuration**
-   - Set **Site URL** to `http://localhost:3000`
-   - Add redirect URL: `http://localhost:3000/admin`
+3. (Recommended, Pro plan+) In **Email** provider settings, enable **Leaked password protection** so Supabase checks new and changed passwords against [HaveIBeenPwned.org](https://haveibeenpwned.com/Passwords) and rejects compromised passwords.
+4. Go to **Authentication** > **URL Configuration**
+   - Set **Site URL** to your app base URL (same as `APP_URL` in .env, e.g. `http://localhost:3000` or `http://103.167.150.103:10100`) so email verification links point to your app
+   - Add redirect URL: `{APP_URL}/admin` (e.g. `http://103.167.150.103:10100/admin`)
 
 ### 2.4 Get API Credentials
 
@@ -171,7 +172,7 @@ YOUTUBE_API_KEY=AIzaSyxxxxx...
 # Optional: YouTube OAuth (connect child's account per household)
 # GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
 # GOOGLE_CLIENT_SECRET=xxxxx
-# APP_URL=http://localhost:3000
+# APP_URL=http://103.167.150.103:10100  # or your Voobi URL
 # YOUTUBE_OAUTH_ENCRYPTION_KEY=your-32-char-or-longer-secret
 ```
 

@@ -145,10 +145,10 @@ Comprehensive review of Docker containerization and E2E testing infrastructure i
 
 ```bash
 # Build Docker image
-docker build -t safetube:latest .
+docker build -t voobi:latest .
 
 # Run Docker container
-docker run -p 3000:3000 --env-file .env safetube:latest
+docker run -p 3000:3000 --env-file .env voobi:latest
 
 # Run E2E tests
 npm run test:e2e

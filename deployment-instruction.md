@@ -1,6 +1,6 @@
-# ZooTube Deployment Instructions
+# Voobi Deployment Instructions
 
-This guide covers deploying ZooTube MVP to a self-hosted server.
+This guide covers deploying Voobi MVP to a self-hosted server.
 
 ## System Requirements
 
@@ -72,9 +72,9 @@ sudo apt install git -y
 
 ```bash
 # Create directory for the application
-sudo mkdir -p /var/www/zootube
-sudo chown -R $USER:$USER /var/www/zootube
-cd /var/www/zootube
+sudo mkdir -p /var/www/voobi
+sudo chown -R $USER:$USER /var/www/voobi
+cd /var/www/voobi
 ```
 
 ### 2.2 Clone Repository
@@ -172,18 +172,18 @@ Add the following configuration:
 ```javascript
 module.exports = {
   apps: [{
-    name: 'zootube',
+    name: 'voobi',
     script: 'node_modules/next/dist/bin/next',
     args: 'start',
-    cwd: '/var/www/zootube',
+    cwd: '/var/www/voobi',
     instances: 'max',
     exec_mode: 'cluster',
     env: {
       NODE_ENV: 'production',
       PORT: 3000
     },
-    error_file: '/var/www/zootube/logs/err.log',
-    out_file: '/var/www/zootube/logs/out.log',
+    error_file: '/var/www/voobi/logs/err.log',
+    out_file: '/var/www/voobi/logs/out.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     merge_logs: true,
     autorestart: true,
@@ -196,7 +196,7 @@ module.exports = {
 ### 5.2 Create Log Directory
 
 ```bash
-mkdir -p /var/www/zootube/logs
+mkdir -p /var/www/voobi/logs
 ```
 
 ### 5.3 Start Application with PM2
@@ -209,7 +209,7 @@ pm2 start ecosystem.config.js
 
 ```bash
 pm2 status
-pm2 logs zootube --lines 50
+pm2 logs voobi --lines 50
 ```
 
 ### 5.5 Configure PM2 Startup Script
@@ -223,7 +223,7 @@ pm2 startup
 pm2 save
 ```
 
-This ensures ZooTube automatically restarts after server reboot.
+This ensures Voobi automatically restarts after server reboot.
 
 ## Step 6: Configure Nginx Reverse Proxy (Recommended)
 
@@ -236,7 +236,7 @@ sudo apt install nginx -y
 ### 6.2 Create Nginx Configuration
 
 ```bash
-sudo nano /etc/nginx/sites-available/zootube
+sudo nano /etc/nginx/sites-available/voobi
 ```
 
 Add the following configuration:
@@ -294,15 +294,15 @@ server {
     }
 
     # Logs
-    access_log /var/log/nginx/zootube_access.log;
-    error_log /var/log/nginx/zootube_error.log;
+    access_log /var/log/nginx/voobi_access.log;
+    error_log /var/log/nginx/voobi_error.log;
 }
 ```
 
 ### 6.3 Enable Site Configuration
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/zootube /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/voobi /etc/nginx/sites-enabled/
 ```
 
 ### 6.4 Test Nginx Configuration
@@ -371,7 +371,7 @@ In your Supabase dashboard:
 
 ```bash
 # View real-time logs
-pm2 logs zootube
+pm2 logs voobi
 
 # Check application status
 pm2 status
@@ -380,8 +380,8 @@ pm2 status
 pm2 monit
 
 # View Nginx logs
-sudo tail -f /var/log/nginx/zootube_access.log
-sudo tail -f /var/log/nginx/zootube_error.log
+sudo tail -f /var/log/nginx/voobi_access.log
+sudo tail -f /var/log/nginx/voobi_error.log
 ```
 
 ## Maintenance Commands
@@ -389,7 +389,7 @@ sudo tail -f /var/log/nginx/zootube_error.log
 ### Update Application
 
 ```bash
-cd /var/www/zootube
+cd /var/www/voobi
 
 # Pull latest changes
 git pull origin main
@@ -401,29 +401,29 @@ npm install
 npm run build
 
 # Restart with PM2
-pm2 restart zootube
+pm2 restart voobi
 ```
 
 ### PM2 Management
 
 ```bash
 # Restart application
-pm2 restart zootube
+pm2 restart voobi
 
 # Stop application
-pm2 stop zootube
+pm2 stop voobi
 
 # Start application
-pm2 start zootube
+pm2 start voobi
 
 # Delete from PM2
-pm2 delete zootube
+pm2 delete voobi
 
 # View detailed info
-pm2 info zootube
+pm2 info voobi
 
 # Flush logs
-pm2 flush zootube
+pm2 flush voobi
 ```
 
 ### Backup Database
@@ -438,7 +438,7 @@ Since you're using Supabase, backups are handled by Supabase. However, you can:
 
 ```bash
 # Check PM2 logs
-pm2 logs zootube --lines 100
+pm2 logs voobi --lines 100
 
 # Check if port 3000 is in use
 sudo lsof -i :3000
@@ -479,7 +479,7 @@ pm2 monit
 pm2 status
 
 # Check Nginx error logs
-sudo tail -f /var/log/nginx/zootube_error.log
+sudo tail -f /var/log/nginx/voobi_error.log
 
 # Verify proxy_pass URL in Nginx config
 ```
@@ -502,7 +502,7 @@ Add to Nginx configuration inside `http` block:
 
 ```nginx
 # /etc/nginx/nginx.conf
-proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=zootube_cache:10m max_size=1g inactive=60m use_temp_path=off;
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=voobi_cache:10m max_size=1g inactive=60m use_temp_path=off;
 ```
 
 ### Enable Gzip Compression

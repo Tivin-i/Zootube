@@ -1,6 +1,6 @@
 {
-  "name": "ZooTube - Curated Videos for Kids",
-  "short_name": "ZooTube",
+  "name": "Voobi - Curated Videos for Kids",
+  "short_name": "Voobi",
   "description": "A safe, parent-curated YouTube video platform for children. Parents manage a whitelist of approved videos that kids can watch.",
   "start_url": "/",
   "display": "standalone",

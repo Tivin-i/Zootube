@@ -10,8 +10,8 @@ export const MAX_RECOMMENDATIONS = 6;
 // Device Token Configuration
 export const DEVICE_TOKEN_EXPIRY_DAYS = 90;
 export const TOKEN_LENGTH = 32;
-export const DEVICE_TOKEN_COOKIE_NAME = "safetube_device_token";
-export const PARENT_ID_COOKIE_NAME = "safetube_parent_id_secure";
+export const DEVICE_TOKEN_COOKIE_NAME = "voobi_device_token";
+export const PARENT_ID_COOKIE_NAME = "voobi_parent_id_secure";
 
 // UI Defaults
 export const DEFAULT_CHILD_NAME = "Zoe";

@@ -3,10 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { handleApiError } from "@/lib/utils/error-handler";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { youtubeConnectionService } from "@/lib/services/youtube-connection.service";
+import { getAppUrl } from "@/lib/utils/app-url";
 
 function adminRedirect(status: "connected" | "error"): Response {
-  const base = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-  const url = `${base.replace(/\/$/, "")}/admin?youtube=${status}`;
+  const url = `${getAppUrl()}/admin?youtube=${status}`;
   return Response.redirect(url);
 }
 

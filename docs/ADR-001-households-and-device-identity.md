@@ -7,7 +7,7 @@ Accepted
 2026-02-04
 
 ## Context
-SafeTube needed to support multiple parents sharing one video whitelist and to link child devices securely. The original model used a single `parent_id` and stored it in localStorage, which was insecure and did not support multi-parent households.
+Voobi needed to support multiple parents sharing one video whitelist and to link child devices securely. The original model used a single `parent_id` and stored it in localStorage, which was insecure and did not support multi-parent households.
 
 ## Decision
 

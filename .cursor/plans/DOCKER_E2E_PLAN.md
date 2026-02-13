@@ -1,7 +1,7 @@
 # Docker & E2E Testing Implementation Plan
 
 ## Overview
-This document outlines the implementation plan for Docker containerization and End-to-End (E2E) testing infrastructure for SafeTube.
+This document outlines the implementation plan for Docker containerization and End-to-End (E2E) testing infrastructure for Voobi.
 
 ## Requirements
 
@@ -97,7 +97,7 @@ This document outlines the implementation plan for Docker containerization and E
 ## File Structure
 
 ```
-/opt/safetube/
+/opt/voobi/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore

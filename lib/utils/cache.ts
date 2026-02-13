@@ -1,5 +1,5 @@
 /**
- * Caching utilities for SafeTube
+ * Caching utilities for Voobi
  * Provides in-memory cache with TTL support
  */
 

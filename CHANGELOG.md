@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **GitHub project name Voobi:** README now opens with a clear **# Voobi** title and tagline so the repository displays as Voobi on GitHub. Added `repository` in `package.json` pointing to `https://github.com/Tivin-i/voobi.git` (update the URL if you use a different org or repo name). To rename the repo on GitHub: **Settings → General → Repository name** → set to `voobi` (or `Voobi`) and save; then update your local remote with `git remote set-url origin https://github.com/YOUR_ORG/voobi.git` if needed.
+
+- **Merged design updates from safetube (mintyq77/safetube):** Brought in recent UI changes from upstream: (1) **Break Mode** in VideoModal redesigned to match mockup—two-panel layout (portrait: top/bottom; landscape: left/right) with white section (giraffe-on-bike illustration, “Time to take a break?”, “Ok, I’m done!”) and blue section (“Back to my video” thumbnail card, “Watch something else” link). (2) **Done Mode** updated with celebrating-giraffe illustration and “Well done!” / “See you next time” copy. (3) **CSS variables** in `app/globals.css` for brand and semantic colors (`--color-primary-yellow`, `--color-primary-blue`, `--color-btn-primary`, `--color-btn-secondary`, etc.) so Break/Done screens use the design system. (4) **Assets** from safetube: `public/img/giraffe_break.png`, `public/img/giraffe_celerate.png`, `public/img/giraffe_profile.svg`. Existing behavior preserved: `useVideoPlayer` hook, fullscreen utils, watch tracking, and Voobi branding elsewhere unchanged.
+
 ### Fixed
+
+- **Supabase Auth leaked password protection:** Lint "Leaked Password Protection Disabled" is resolved by enabling the feature in the Supabase dashboard (Authentication → Providers → Email). Documented in docs/setup.md §2.3. Requires Pro plan or above.
+
+- **Function `public.handle_new_user` search_path:** Set `SET search_path = public` on the SECURITY DEFINER trigger function so name resolution is fixed and the lint "role mutable search_path" is resolved; reduces search-path injection risk. Updated `migrations/001_schema.sql` and `docs/setup.md`.
 
 - **Migration 001_schema.sql grants:** Added explicit `GRANT USAGE ON SCHEMA public` and `GRANT SELECT/INSERT/UPDATE/DELETE` on `households`, `household_members`, `videos`, `youtube_connections`, `household_children`, `device_tokens` to `authenticated`, and `GRANT SELECT ON public.parents` to `anon` and `authenticated`, plus `GRANT EXECUTE` on the RLS helper functions, so the API no longer returns "permission denied for table household_members" when using the anon key with a logged-in user.
 
@@ -16,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **RLS infinite recursion on `household_members`:** Policies on `household_members` (and others that depended on it) used a subquery on `household_members` themselves, causing "infinite recursion detected in policy for relation household_members". Migration `001_schema.sql` now defines SECURITY DEFINER helpers `public.current_user_household_ids()` and `public.current_user_owner_household_ids()`; all RLS policies use these instead of querying `household_members` directly in the policy expression.
 
 ### Added
+
+- **APP_URL environment variable:** Single env var `APP_URL` (e.g. `http://103.167.150.103:10100`) used for OAuth redirect URIs (YouTube and child callback) and post-login redirects. Helper `lib/utils/app-url.ts` normalizes host:port (adds `http://` if missing) and strips trailing slashes. Set in `.env`; documented in `.env.example` and docs/setup.md. Supabase Site URL should match `APP_URL` so email verification links point to your app.
+
+- **Rebrand to Voobi:** Replaced all PickList Kids references with Voobi across app, docs, Docker, and deployment. Cookie names updated to `voobi_device_token` and `voobi_parent_id_secure`; package name to `voobi`; Docker service/container/network to `voobi`/`voobi-app`/`voobi-network`. Logo asset: `voobi-logo.png` (copy of previous logo; replace with final branding as needed).
+
+- **Rebrand to PickList Kids (superseded by Voobi):** Replaced all ZooTube and SafeTube references with PickList Kids. Cookie names `picklistkids_*`; package `picklist-kids`; Docker `picklistkids`/`picklistkids-app`/`picklistkids-network`.
+
+- **Customer-facing marketing website:** New landing page at `/` for parents and caregivers. Hero with tagline "YouTube they'll love. Only what you approve.", CTAs to Get started (`/admin/signup`) and Set up your child's device (`/link-device`). How it works (3 steps), Why Voobi, and FAQ accordion. Warm/amber palette; no purple–blue gradients; minimal emoji. Accessibility: skip link, semantic HTML, focus-visible on all CTAs, `prefers-reduced-motion` for FAQ animation. Child video feed moved to `/feed`; all "home" links (link-device success, KidsHeader, watch page, error pages) and E2E HomePage now point to `/feed`. New `app/feed/page.tsx` (feed content), `app/page.tsx` (marketing), `components/marketing/MarketingFAQ.tsx`. E2E: marketing smoke test at `/`, specs and HomePage updated for `/feed`.
 
 - **Migrations squashed:** All schema migrations are now a single file `migrations/001_schema.sql` (parents, device_tokens, households, household_members, videos, youtube_connections, household_children, RLS, backfills). Idempotent; safe to re-run. README device-linking and troubleshooting updated to reference `001_schema.sql`.
 
@@ -33,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Docs:** `docs/CHILD_ACCOUNT_OAUTH.md`. Google Cloud: add redirect URI `.../api/auth/child/callback` for the same OAuth client.
 
 - **Docker env and auth**
-  - README: step to copy `.env.local` to `.env` for Docker (Compose only loads `.env`); step to verify env in container with `docker compose run --rm safetube-app sh -c 'echo SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL'` (single quotes so the variable is expanded inside the container). Note that plain `docker run` does not load `.env`—use `docker compose up` or `docker run --env-file .env`. New "Still Could not reach the authentication server?" troubleshooting: use `./scripts/docker-build.sh`, then check `curl -s http://localhost:10100/api/health` for `supabase_configured`.
+  - README: step to copy `.env.local` to `.env` for Docker (Compose only loads `.env`); step to verify env in container with `docker compose run --rm voobi-app sh -c 'echo SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL'` (single quotes so the variable is expanded inside the container). Note that plain `docker run` does not load `.env`—use `docker compose up` or `docker run --env-file .env`. New "Still Could not reach the authentication server?" troubleshooting: use `./scripts/docker-build.sh`, then check `curl -s http://localhost:10100/api/health` for `supabase_configured`.
   - docker-compose.yml: comment that Compose loads `.env` from current working directory, so run from project root; and note to copy `.env.local` to `.env` if needed.
   - scripts/docker-build.sh: build with explicit `--build-arg` so env is always passed; support `.env.local` when `.env` is missing (for build); after build, print the verify command for container env.
   - Health API (`/api/health`): response now includes `supabase_configured` (true when `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set and not placeholders) for Docker debugging.
@@ -78,7 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Documentation:** All user-facing docs consolidated into `docs/`. SETUP.md → docs/setup.md, DOCKER_E2E_README.md → docs/docker-e2e.md, E2E_TEST_EXECUTION_SUMMARY.md → docs/e2e-execution-summary.md, safetube-prd.md → docs/prd.md. Added docs/README.md as documentation index. Root README now has a "Documentation" section linking to the index and key guides.
+- **Documentation:** All user-facing docs consolidated into `docs/`. SETUP.md → docs/setup.md, DOCKER_E2E_README.md → docs/docker-e2e.md, E2E_TEST_EXECUTION_SUMMARY.md → docs/e2e-execution-summary.md, prd.md (Voobi) → docs/prd.md. Added docs/README.md as documentation index. Root README now has a "Documentation" section linking to the index and key guides.
 
 - **Documentation:** Moved all plan documents into `plans/`: `ARCHITECTURE_ANALYSIS.md`, `DOCKER_E2E_PLAN.md`, `E2E_TEST_FIX_PLAN.md`, `IMPLEMENTATION_PLAN.md`, `implementation-plan.md`, and `docs/MULTI_PARENT_IMPLEMENTATION_PLAN.md` → `plans/MULTI_PARENT_IMPLEMENTATION_PLAN.md`. Updated references in CHANGELOG and docs/e2e-execution-summary.md.
 
@@ -102,7 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - README: added "Device linking (parents + kids view)" with migration steps and when to run 001 vs 002.
 
 - **E2E fixture cookie names (backlog)**
-  - `tests/fixtures/auth.ts` now uses app cookie names `safetube_device_token` and `safetube_parent_id_secure`, and sets both cookies when simulating a linked device so legacy flow works without mocking.
+  - `tests/fixtures/auth.ts` now uses app cookie names `voobi_device_token` and `voobi_parent_id_secure`, and sets both cookies when simulating a linked device so legacy flow works without mocking.
 
 ### Fixed
 

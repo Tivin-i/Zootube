@@ -67,7 +67,7 @@ export default function SignupPage() {
             Create Parent Account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sign up to manage your ZooTube videos
+            Sign up to manage your Voobi videos
           </p>
           {process.env.NODE_ENV === "development" && (
             <p className="mt-1 text-center text-xs text-amber-600" title="Only visible in development">

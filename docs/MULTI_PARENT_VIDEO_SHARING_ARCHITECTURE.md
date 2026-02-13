@@ -2,7 +2,7 @@
 
 ## Context
 
-SafeTube currently has a single-parent model: one parent owns a video list, and child devices are linked to that parent. The product goal is to allow **multiple parents or guardians to share and sync the whitelisted videos for one or more children**.
+Voobi currently has a single-parent model: one parent owns a video list, and child devices are linked to that parent. The product goal is to allow **multiple parents or guardians to share and sync the whitelisted videos for one or more children**.
 
 ## Requirements
 

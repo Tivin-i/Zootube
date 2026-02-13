@@ -82,7 +82,7 @@ Most tests use **aria-label**, **role**, or **class/text** selectors instead of 
 
 - **Loading/network:** Tests use mocks for `/api/videos`, `/api/parent-by-email`, and device token; this reduces flakiness. `waitForVideos()` uses a race between video cards and “No Videos Yet” which is reasonable.
 - **Animation/timing:** No hard `waitForTimeout` observed; prefer `waitForLoadState` and locator waits.
-- **Cookie names:** Fixtures use cookie names; app uses `safetube_device_token` and `safetube_parent_id_secure`. E2E fixtures (e.g. auth.ts) should align with these names when setting cookies for tests (already noted in CODE_REVIEW_IN_DEPTH).
+- **Cookie names:** Fixtures use cookie names; app uses `voobi_device_token` and `voobi_parent_id_secure`. E2E fixtures (e.g. auth.ts) should align with these names when setting cookies for tests (already noted in CODE_REVIEW_IN_DEPTH).
 
 ---
 
@@ -103,7 +103,7 @@ No config change required for Phase 1; Phase 4 may add `data-testid` and optiona
 1. **Node / CI:** Document in README that E2E requires Node 20+ (or Docker); add CI step with Node 20 and `npx playwright install --with-deps` and `npx playwright test`.
 2. **Selectors:** Add `data-testid` to key elements (video card, loading, error, link-device form, video title on watch page) and switch page objects to use them.
 3. **Critical flows:** Add admin login E2E and, if possible, one add-video flow.
-4. **Fixtures:** Align cookie names in tests with app constants (`safetube_device_token`, `safetube_parent_id_secure`).
+4. **Fixtures:** Align cookie names in tests with app constants (`voobi_device_token`, `voobi_parent_id_secure`).
 
 ---
 

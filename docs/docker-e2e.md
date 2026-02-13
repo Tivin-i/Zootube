@@ -6,17 +6,17 @@
 
 ```bash
 # Build the production image
-docker build -t safetube:latest .
+docker build -t voobi:latest .
 
 # Build with a specific tag
-docker build -t safetube:v1.0.0 .
+docker build -t voobi:v1.0.0 .
 ```
 
 ### Running the Docker Container
 
 ```bash
 # Run with environment variables from .env file
-docker run -p 3000:3000 --env-file .env safetube:latest
+docker run -p 3000:3000 --env-file .env voobi:latest
 
 # Run with inline environment variables
 docker run -p 3000:3000 \
@@ -24,10 +24,10 @@ docker run -p 3000:3000 \
   -e NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key \
   -e SUPABASE_SERVICE_ROLE_KEY=your_key \
   -e YOUTUBE_API_KEY=your_key \
-  safetube:latest
+  voobi:latest
 
 # Run in detached mode
-docker run -d -p 3000:3000 --name safetube-app --env-file .env safetube:latest
+docker run -d -p 3000:3000 --name voobi-app --env-file .env voobi:latest
 ```
 
 ### Using Docker Compose
@@ -239,7 +239,7 @@ The tests are configured for CI/CD:
 
 **Issue**: Container fails to start
 - Check environment variables are set correctly
-- Check logs: `docker logs safetube-app`
+- Check logs: `docker logs voobi-app`
 - Verify health endpoint: `curl http://localhost:3000/api/health`
 
 **Issue**: Build fails

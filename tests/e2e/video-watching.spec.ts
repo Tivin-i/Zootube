@@ -85,7 +85,7 @@ test.describe('Video Watching', () => {
     await page.waitForLoadState('networkidle');
 
     const hasError = await page.getByText('Video not found').isVisible().catch(() => false);
-    const goHomeVisible = await page.getByRole('button', { name: 'Go Home' }).isVisible().catch(() => false);
+    const goHomeVisible = await page.getByRole('link', { name: 'Go Home' }).isVisible().catch(() => false);
     expect(hasError || goHomeVisible).toBe(true);
   });
 

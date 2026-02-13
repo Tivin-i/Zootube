@@ -21,7 +21,7 @@ export class HomePage {
   }
 
   async goto() {
-    await this.page.goto('/');
+    await this.page.goto('/feed');
     await this.page.waitForLoadState('networkidle');
   }
 

@@ -1,4 +1,4 @@
-# SafeTube - Product Requirements Document
+# Voobi - Product Requirements Document
 
 ## Overview
 
@@ -12,7 +12,7 @@ Children love YouTube Kids for its interactive experience—browsing thumbnails,
 
 ### Solution
 
-SafeTube is a "wrapper" application that lets parents hand-pick YouTube videos for their children. Children get the familiar YouTube-like browsing experience, but only see parent-approved content with curated recommendations.
+Voobi is a "wrapper" application that lets parents hand-pick YouTube videos for their children. Children get the familiar YouTube-like browsing experience, but only see parent-approved content with curated recommendations.
 
 ### Goals
 
@@ -77,7 +77,7 @@ SafeTube is a "wrapper" application that lets parents hand-pick YouTube videos f
 ### Flow 4: Child Watches Videos
 
 ```
-1. Child taps SafeTube icon on home screen
+1. Child taps Voobi icon on home screen
 2. App loads, reads parent_id from localStorage
 3. Home screen displays thumbnail grid:
    - Videos sorted by watch_count ascending (least watched first)

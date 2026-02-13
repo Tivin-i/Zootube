@@ -1,7 +1,7 @@
-# In-Depth Code Review – SafeTube / ZooTube
+# In-Depth Code Review – Voobi
 
 **Date:** 2026-01-29  
-**Scope:** Full codebase review; Docker up; CLI testing with verified user `zootube@elijah.anonmail.work`
+**Scope:** Full codebase review; Docker up; CLI testing with verified user `example@example.com`
 
 ---
 
@@ -10,7 +10,7 @@
 - **Build:** ✅ Passes (`npm run build`)
 - **Unit tests:** ✅ 32 tests pass after excluding Playwright specs from Jest
 - **Docker health:** ✅ `GET /api/health` returns 200
-- **Verified user lookup:** ⚠️ `GET /api/parent-by-email?email=zootube@elijah.anonmail.work` returns **404** – see “Data / deployment” below
+- **Verified user lookup:** ⚠️ `GET /api/parent-by-email?email=example@example.com` returns **404** – see “Data / deployment” below
 
 **Fixes applied in this review:**
 
@@ -53,23 +53,23 @@
 
 ### 2.4 Device token validation trusts parent_id cookie
 
-- **Behavior:** In `lib/services/device-token.service.ts`, `validateDeviceToken()` effectively uses `PARENT_ID_COOKIE_NAME` to determine the parent. The `DEVICE_TOKEN_COOKIE_NAME` cookie is set but not used for validation. So anyone who can set cookies (e.g. in the same origin) could set `safetube_parent_id_secure` and be treated as that parent.
+- **Behavior:** In `lib/services/device-token.service.ts`, `validateDeviceToken()` effectively uses `PARENT_ID_COOKIE_NAME` to determine the parent. The `DEVICE_TOKEN_COOKIE_NAME` cookie is set but not used for validation. So anyone who can set cookies (e.g. in the same origin) could set `voobi_parent_id_secure` and be treated as that parent.
 - **Risk:** Low if the app is only used in a trusted context (e.g. at home). For higher assurance, the service should validate the device token (e.g. stored in DB or signed) and map it to a parent_id, and not rely only on a second cookie for identity. The TODOs in the file already mention this.
 
 ---
 
 ## 3. Data / Deployment
 
-### Verified user `zootube@elijah.anonmail.work`
+### Verified user `example@example.com`
 
-- **Observed:** `GET /api/parent-by-email?email=zootube%40elijah.anonmail.work` returns **404** with body `{"error":"Parent account not found","code":"NOT_FOUND"}` (HTTP 404).
+- **Observed:** `GET /api/parent-by-email?email=example%40example.com` returns **404** with body `{"error":"Parent account not found","code":"NOT_FOUND"}` (HTTP 404).
 - **Implications:**
   - Either the **parents** table has no row with that email, or
   - The **migration** that syncs `auth.users` → `parents` has not been run on this Supabase project, or
   - The Auth user was created with a different email (e.g. casing, typo).
 - **What to do:**  
   - Run `migrations/001_create_parents_table_and_sync.sql` on the Supabase DB (creates `parents`, trigger, and backfill from `auth.users`).  
-  - In Supabase Dashboard, confirm there is a user with email `zootube@elijah.anonmail.work` and that `parents` has a row with the same `id` and `email`.
+  - In Supabase Dashboard, confirm there is a user with email `example@example.com` and that `parents` has a row with the same `id` and `email`.
 
 ---
 
@@ -77,7 +77,7 @@
 
 - **GET /api/videos:** Requires `parent_id` (validated as UUID). Calling without `parent_id` correctly returns 400. No bug.
 - **Error handler:** `handleApiError` uses `console.error`; unit tests trigger it and add noise. Consider a small logger abstraction so tests can suppress or mock.
-- **E2E fixture cookie name:** `tests/fixtures/auth.ts` uses cookie name `device_token`; the app uses `safetube_device_token` and `safetube_parent_id_secure`. E2E mocks may need to align if tests ever assert on real cookies.
+- **E2E fixture cookie name:** `tests/fixtures/auth.ts` uses cookie name `device_token`; the app uses `voobi_device_token` and `voobi_parent_id_secure`. E2E mocks may need to align if tests ever assert on real cookies.
 - **YouTube API key:** `lib/youtube.ts` uses `process.env.YOUTUBE_API_KEY`. If missing, the Google client may fail on first use. Optional: check at startup or in the route that uses it and return a clear error.
 
 ---
@@ -88,7 +88,7 @@
 npm run build          # OK
 npm test               # OK after excluding tests/e2e
 curl http://localhost:10100/api/health                    # 200
-curl "http://localhost:10100/api/parent-by-email?email=zootube%40elijah.anonmail.work"  # 404 (see §3)
+curl "http://localhost:10100/api/parent-by-email?email=example%40example.com"  # 404 (see §3)
 ```
 
 ---
@@ -105,7 +105,7 @@ curl "http://localhost:10100/api/parent-by-email?email=zootube%40elijah.anonmail
 
 ## 7. Recommendations
 
-1. **Run migration:** Ensure `001_create_parents_table_and_sync.sql` is applied so `zootube@elijah.anonmail.work` (and any other Auth users) exist in `parents` and device linking works.
+1. **Run migration:** Ensure `001_create_parents_table_and_sync.sql` is applied so `example@example.com` (and any other Auth users) exist in `parents` and device linking works.
 2. **Watch count:** Decide whether the modal should trigger a watch and, if not, remove the track call from `VideoModal` to avoid double count.
 3. **Device token:** When adding a `device_tokens` table (or similar), validate the token server-side and derive parent_id from it instead of trusting only the parent_id cookie.
 4. **E2E:** Run `npm run test:e2e` against a stack (e.g. Docker + test Supabase) to confirm full flows; keep Jest for unit tests only.

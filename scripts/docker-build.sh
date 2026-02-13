@@ -40,4 +40,4 @@ docker compose build --no-cache \
   --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY"
 echo "Done. Start with: docker compose up -d"
-echo "To verify env in container: docker compose run --rm safetube-app sh -c 'echo SUPABASE_URL=\$NEXT_PUBLIC_SUPABASE_URL'"
+echo "To verify env in container: docker compose run --rm voobi-app sh -c 'echo SUPABASE_URL=\$NEXT_PUBLIC_SUPABASE_URL'"

@@ -42,7 +42,7 @@ export default function KidsHeader({
           <div className="flex items-center gap-2">
             {showBackButton && (
               <button
-                onClick={() => router.push("/")}
+                onClick={() => router.push("/feed")}
                 className="rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                 aria-label="Go back to home"
               >
@@ -62,14 +62,14 @@ export default function KidsHeader({
               </button>
             )}
             <Image
-              src="/zootube-logo.png"
-              alt="ZooTube Logo"
+              src="/voobi-logo.png"
+              alt="Voobi Logo"
               width={48}
               height={48}
               className="h-10 w-10 sm:h-12 sm:w-12"
             />
             <h1 className="font-chewy text-2xl text-gray-900 sm:text-3xl">
-              ZooTube
+              Voobi
             </h1>
           </div>
 

@@ -86,9 +86,9 @@ export default function LinkDevicePage() {
       // Show success message before redirecting
       setSuccess(true);
       
-      // Redirect to home feed after a brief delay
+      // Redirect to feed after a brief delay
       setTimeout(() => {
-        router.push("/");
+        router.push("/feed");
       }, 1500);
     } catch (err) {
       const message = err instanceof Error ? err.message : "An error occurred. Please try again.";
@@ -124,7 +124,7 @@ export default function LinkDevicePage() {
             </svg>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-            Welcome to ZooTube
+            Welcome to Voobi
           </h2>
           <p className="mt-3 text-lg text-gray-600">
             Enter your parent's email to link this device
@@ -297,7 +297,7 @@ export default function LinkDevicePage() {
 
           <div className="mt-6 text-center text-sm text-gray-600">
             <p>
-              Don't have a ZooTube account?
+              Don't have a Voobi account?
               <br />
               Ask your parent to create one at{" "}
               <a

@@ -20,13 +20,13 @@ const chewy = Chewy({
 });
 
 export const metadata: Metadata = {
-  title: "ZooTube - Curated Videos for Kids",
-  description: "A safe, parent-curated YouTube video platform for children. Parents manage a whitelist of approved videos.",
+  title: "Voobi - Curated Videos for Kids",
+  description: "YouTube they'll love. Only what you approve. Whitelist channels and videos; kids get a focused feed—nothing else.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ZooTube",
+    title: "Voobi",
   },
   formatDetection: {
     telephone: false,

@@ -47,7 +47,7 @@ export default function WatchError({
               Try Again
             </button>
             <a
-              href="/"
+              href="/feed"
               className="rounded-md bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-300 focus-visible:outline focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2"
             >
               Go Home

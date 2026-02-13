@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import crypto from "crypto";
+import { getAppUrl } from "@/lib/utils/app-url";
 
 const YOUTUBE_READONLY_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 const STATE_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
@@ -117,6 +118,5 @@ export async function exchangeCodeForTokens(code: string): Promise<{ refresh_tok
 }
 
 function getRedirectUri(): string {
-  const base = process.env.APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}/api/auth/youtube/callback`;
+  return `${getAppUrl()}/api/auth/youtube/callback`;
 }

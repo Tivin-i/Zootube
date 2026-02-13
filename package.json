@@ -1,7 +1,11 @@
 {
-  "name": "zootube",
+  "name": "voobi",
   "version": "0.1.0",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tivin-i/voobi.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

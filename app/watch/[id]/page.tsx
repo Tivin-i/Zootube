@@ -113,7 +113,7 @@ export default function WatchPage() {
 
   const handleDone = () => setIsDone(true);
 
-  const handleWatchOtherVideo = () => router.push("/");
+  const handleWatchOtherVideo = () => router.push("/feed");
 
   const handleRecommendationClick = (recommendedVideo: Video) => {
     router.push(`/watch/${recommendedVideo.id}`);
@@ -156,7 +156,7 @@ export default function WatchPage() {
               </button>
             )}
             <a
-              href="/"
+              href="/feed"
               className="rounded-md bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-300 focus-visible:outline focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2"
             >
               Go Home

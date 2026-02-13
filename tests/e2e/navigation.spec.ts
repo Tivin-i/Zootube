@@ -5,6 +5,15 @@ import { mockDeviceTokenAPI, setDeviceToken } from '../fixtures/auth';
 import { TEST_PARENT_IDS } from '../fixtures/test-data';
 
 test.describe('Navigation', () => {
+  test('marketing page loads at / and shows CTAs', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    expect(page.url()).toMatch(/\/$|\/\/[^/]+\/?$/);
+    const getStarted = page.getByRole('link', { name: /get started/i });
+    const setUpDevice = page.getByRole('link', { name: /set up.*device/i });
+    await expect(getStarted.or(setUpDevice).first()).toBeVisible({ timeout: 5000 });
+  });
+
   test('should navigate between pages correctly', async ({ page }) => {
     const homePage = new HomePage(page);
     const linkDevicePage = new LinkDevicePage(page);
@@ -13,12 +22,12 @@ test.describe('Navigation', () => {
     await linkDevicePage.goto();
     expect(page.url()).toContain('/link-device');
     
-    // Navigate to home (should redirect back if not linked)
+    // Navigate to feed (should redirect to link-device if not linked)
     await homePage.goto();
-    // Should either be on link-device (if not linked) or home (if linked)
+    // Should either be on link-device (if not linked) or feed (if linked)
     const isOnLinkDevice = page.url().includes('/link-device');
-    const isOnHome = page.url() === '/' || page.url().endsWith('/');
-    expect(isOnLinkDevice || isOnHome).toBe(true);
+    const isOnFeed = page.url().includes('/feed');
+    expect(isOnLinkDevice || isOnFeed).toBe(true);
   });
 
   test('should maintain device link after navigation', async ({ page }) => {
@@ -69,16 +78,16 @@ test.describe('Navigation', () => {
     await linkDevicePage.goto();
     expect(page.url()).toContain('/link-device');
     
-    // Navigate to home (will redirect back if not linked)
-    await page.goto('/');
+    // Navigate to feed (will redirect to link-device if not linked)
+    await page.goto('/feed');
     await page.waitForLoadState('networkidle');
     
     // Go back
     await page.goBack();
     await page.waitForLoadState('networkidle');
     
-    // Should be on link-device or home
+    // Should be on link-device or feed
     const url = page.url();
-    expect(url.includes('/link-device') || url === '/' || url.endsWith('/')).toBe(true);
+    expect(url.includes('/link-device') || url.includes('/feed')).toBe(true);
   });
 });

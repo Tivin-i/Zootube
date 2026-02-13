@@ -1,230 +1,165 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
-import dynamic from "next/dynamic";
-import { Video } from "@/types/database";
-import KidsHeader from "@/components/KidsHeader";
-import { useHouseholdId } from "@/lib/hooks/useHouseholdId";
-import { formatDuration } from "@/lib/utils/duration";
-import { DEFAULT_CHILD_NAME } from "@/lib/utils/constants";
-import { createClient } from "@/lib/supabase/client";
+import MarketingFAQ from "@/components/marketing/MarketingFAQ";
 
-// Lazy load VideoModal to reduce initial bundle size
-// Only load when a video is selected
-const VideoModal = dynamic(() => import("@/components/VideoModal"), {
-  loading: () => null, // No loading state needed as modal opens after selection
-  ssr: false, // VideoModal is client-side only
-});
-
-export default function Home() {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const router = useRouter();
-  const { householdId, loading: householdIdLoading, refetch } = useHouseholdId();
-  const sessionLinkAttemptedRef = useRef(false);
-
-  useEffect(() => {
-    if (householdId) {
-      sessionLinkAttemptedRef.current = false;
-      fetchVideos(householdId);
-      return;
-    }
-
-    if (householdIdLoading) {
-      return;
-    }
-
-    if (sessionLinkAttemptedRef.current) {
-      return;
-    }
-    sessionLinkAttemptedRef.current = true;
-
-    (async () => {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session?.user) {
-        const householdsRes = await fetch("/api/households");
-        if (householdsRes.ok) {
-          const { households } = await householdsRes.json();
-          if (households?.length > 0) {
-            const defaultHousehold = households[0];
-            const res = await fetch("/api/device-token", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                householdId: defaultHousehold.id,
-                parentId: session.user.id,
-              }),
-            });
-            if (res.ok) {
-              await refetch();
-              fetchVideos(defaultHousehold.id);
-              return;
-            }
-          }
-        }
-      }
-      router.push("/link-device");
-    })();
-  }, [router, householdId, householdIdLoading, refetch]);
-
-  const fetchVideos = async (householdId: string) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/videos?household_id=${householdId}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch videos");
-      }
-
-      setVideos(data.videos || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVideoClick = (video: Video) => {
-    setSelectedVideo(video);
-    setIsModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setSelectedVideo(null);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
-        <div className="text-center" data-testid="loading-state">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-amber-700 border-t-transparent" data-testid="loading-spinner" aria-hidden="true" />
-          <p className="text-lg font-medium text-amber-900" aria-live="polite">Loading videos…</p>
-        </div>
-      </div>
-    );
-  }
-
+export default function MarketingPage() {
   return (
-    <div className="min-h-screen" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
-      <KidsHeader showUserMenu={true} childName={DEFAULT_CHILD_NAME} />
+    <div className="min-h-screen bg-white text-gray-900">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-amber-500 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-600"
+      >
+        Skip to main content
+      </a>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {error && (
-          <div className="mb-6 rounded-xl bg-red-50 p-4 shadow-md" role="alert" aria-live="polite" data-testid="error-message">
-            <p className="text-sm text-red-800">{error}</p>
+      <header className="border-b border-gray-200 bg-white">
+        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6" aria-label="Main">
+          <Link
+            href="/"
+            className="flex items-center gap-2 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 rounded"
+          >
+            <Image src="/voobi-logo.png" alt="" width={40} height={40} className="h-10 w-10" />
+            <span className="font-chewy text-xl text-gray-900 sm:text-2xl">Voobi</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/login"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 rounded px-2 py-1"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/link-device"
+              className="rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-amber-600 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            >
+              Set up device
+            </Link>
           </div>
-        )}
+        </nav>
+      </header>
 
-        {videos.length === 0 ? (
-          <div className="flex min-h-[60vh] items-center justify-center" data-testid="empty-state">
-            <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
-              <svg
-                className="mx-auto h-24 w-24 text-amber-700"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-              <h2 className="mt-4 font-chewy text-2xl text-gray-900">
-                No Videos Yet
-              </h2>
-              <p className="mt-2 text-gray-600">
-                Ask your parent to add some videos to your collection!
-              </p>
-            </div>
+      <main id="main-content" className="scroll-mt-4" tabIndex={-1}>
+        {/* Hero */}
+        <section className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 sm:py-24" aria-labelledby="hero-heading">
+          <h1 id="hero-heading" className="font-chewy text-4xl text-gray-900 sm:text-5xl md:text-6xl" style={{ textWrap: "balance" }}>
+            Voobi
+          </h1>
+          <p className="mt-4 text-xl font-semibold text-gray-800 sm:text-2xl" style={{ textWrap: "balance" }}>
+            YouTube they&apos;ll love. Only what you approve.
+          </p>
+          <p className="mt-4 text-base text-gray-600 sm:text-lg max-w-2xl mx-auto">
+            Whitelist channels and videos. Kids get a focused feed—nothing else.
+          </p>
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <Link
+              href="/admin/signup"
+              className="w-full rounded-md bg-amber-500 px-6 py-3 text-center text-sm font-semibold text-gray-900 hover:bg-amber-600 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:w-auto"
+            >
+              Get started
+            </Link>
+            <Link
+              href="/link-device"
+              className="w-full rounded-md border-2 border-gray-300 bg-white px-6 py-3 text-center text-sm font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-50 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:w-auto"
+            >
+              Set up your child&apos;s device
+            </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-3">
-            {videos.map((video) => (
-              <button
-                key={video.id}
-                onClick={() => handleVideoClick(video)}
-                className="group block overflow-hidden rounded-2xl bg-white shadow-md transition-all hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-                aria-label={`Watch ${video.title}`}
-                data-testid="video-card"
-              >
-                {/* Thumbnail */}
-                <div className="relative aspect-video w-full overflow-hidden bg-gray-200">
-                  {video.thumbnail_url ? (
-                    <Image
-                      src={video.thumbnail_url}
-                      alt={video.title || "Video thumbnail"}
-                      fill
-                      className="object-cover transition-transform group-hover:scale-105"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <svg
-                        className="h-12 w-12 text-gray-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                  {/* Duration Badge */}
-                  <div className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white">
-                    {formatDuration(video.duration_seconds)}
-                  </div>
-                  {/* Watch Count Badge */}
-                  {video.watch_count > 0 && (
-                    <div className="absolute left-2 top-2 rounded bg-amber-600 px-1.5 py-0.5 text-xs font-medium text-white">
-                      Watched {video.watch_count}×
-                    </div>
-                  )}
-                </div>
+        </section>
 
-                {/* Title */}
-                <div className="p-4">
-                  <h3 className="line-clamp-2 text-sm font-medium text-gray-900 group-hover:text-amber-700">
-                    {video.title}
-                  </h3>
-                </div>
-              </button>
-            ))}
+        {/* How it works */}
+        <section className="border-t border-gray-200 bg-gray-50 px-4 py-16 sm:px-6 sm:py-20" aria-labelledby="how-heading">
+          <div className="mx-auto max-w-4xl">
+            <h2 id="how-heading" className="text-center text-2xl font-semibold text-gray-900 sm:text-3xl">
+              How it works
+            </h2>
+            <ol className="mt-12 grid gap-10 sm:grid-cols-3">
+              <li className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-amber-500">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800" aria-hidden>
+                  1
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-gray-900">Add videos</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Sign up and add YouTube videos or whole channels to your list. Only you choose what goes in.
+                </p>
+              </li>
+              <li className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-amber-500">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800" aria-hidden>
+                  2
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-gray-900">Link the device</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  On your child&apos;s phone or tablet, open Voobi and enter your email to connect their device to your list.
+                </p>
+              </li>
+              <li className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-200 transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-amber-500">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-800" aria-hidden>
+                  3
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-gray-900">Kids watch safely</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  They see only your curated feed and recommendations from that list—no random or unapproved videos.
+                </p>
+              </li>
+            </ol>
           </div>
-        )}
+        </section>
+
+        {/* Why Voobi */}
+        <section className="border-t border-gray-200 px-4 py-16 sm:px-6 sm:py-20" aria-labelledby="why-heading">
+          <div className="mx-auto max-w-4xl">
+            <h2 id="why-heading" className="text-center text-2xl font-semibold text-gray-900 sm:text-3xl">
+              Why Voobi
+            </h2>
+            <ul className="mt-10 grid gap-8 sm:grid-cols-3">
+              <li className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900">You're in control</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Every video and channel is chosen by you. No algorithm pushing content you didn&apos;t approve.
+                </p>
+              </li>
+              <li className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900">Familiar experience</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Kids get a YouTube-like grid and player they already understand—just with your list only.
+                </p>
+              </li>
+              <li className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900">No surprises</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Recommendations come only from your whitelist, so they never land on unapproved content.
+                </p>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="border-t border-gray-200 bg-gray-50 px-4 py-16 sm:px-6 sm:py-20">
+          <div className="mx-auto max-w-4xl">
+            <MarketingFAQ />
+          </div>
+        </section>
       </main>
 
-      {/* Video Modal */}
-      <VideoModal
-        video={selectedVideo}
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-      />
+      <footer className="border-t border-gray-200 bg-white px-4 py-8 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
+          <p className="text-sm text-gray-500">Voobi — Curated video for kids.</p>
+          <nav className="flex gap-6" aria-label="Footer">
+            <Link
+              href="/admin/login"
+              className="text-sm text-gray-600 hover:text-gray-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 rounded"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/link-device"
+              className="text-sm text-gray-600 hover:text-gray-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 rounded"
+            >
+              Set up device
+            </Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }
