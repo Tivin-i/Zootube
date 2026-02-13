@@ -40,11 +40,26 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "@tanstack/react-table"],
   },
+  // Allow dev server access from APP_URL (e.g. Docker accessed via host IP)
+  ...(process.env.APP_URL
+    ? (() => {
+        try {
+          const raw = process.env.APP_URL!;
+          const origin = new URL(raw.startsWith("http") ? raw : `http://${raw}`).origin;
+          return { allowedDevOrigins: [origin] };
+        } catch {
+          return {};
+        }
+      })()
+    : {}),
 };
 
 const config = withBundleAnalyzer(withPWA(nextConfig));
 
-// Enable Cloudflare bindings in local dev (next dev)
-initOpenNextCloudflareForDev();
+// Enable Cloudflare bindings in local dev (next dev). Skip when running in Docker:
+// workerd binary is glibc-only and cannot run on Alpine (musl).
+if (process.env.SKIP_CLOUDFLARE_DEV_INIT !== "1") {
+  initOpenNextCloudflareForDev();
+}
 
 export default config;

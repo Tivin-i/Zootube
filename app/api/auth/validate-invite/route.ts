@@ -20,12 +20,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { code } = validateInviteBodySchema.parse(body);
 
-    const envCode = process.env.BETA_INVITE_CODE?.trim();
+    const raw = process.env.BETA_INVITE_CODE;
+    const envCode = typeof raw === "string" ? raw.trim() : "";
     const envCodes = process.env.BETA_INVITE_CODES?.split(",").map((c) => c.trim()).filter(Boolean) ?? [];
 
     const allowedCodes = envCode ? [envCode, ...envCodes] : envCodes;
 
     if (allowedCodes.length === 0) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "[validate-invite] BETA_INVITE_CODE is empty or unset – signup is open. Restart the dev server after setting BETA_INVITE_CODE in .env or .env.local."
+        );
+      }
       return NextResponse.json({ valid: true }, { status: 200 });
     }
 

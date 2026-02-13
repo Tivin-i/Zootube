@@ -175,7 +175,8 @@ YOUTUBE_API_KEY=AIzaSyxxxxx...
 # APP_URL=http://103.167.150.103:10100  # or your Voobi URL
 # YOUTUBE_OAUTH_ENCRYPTION_KEY=your-32-char-or-longer-secret
 
-# Optional: beta invite code – when set, only users with this code can sign up (leave empty for open signup)
+# Optional: beta invite code – when set, only users with this code can sign up (leave empty for open signup).
+# Restart the dev server (or redeploy) after adding or changing BETA_INVITE_CODE so the API can read it.
 # BETA_INVITE_CODE=
 ```
 

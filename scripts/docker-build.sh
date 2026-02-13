@@ -35,9 +35,8 @@ if [ "$NEXT_PUBLIC_SUPABASE_URL" = "https://placeholder.supabase.co" ] || [ "$NE
   exit 1
 fi
 
-echo "Building with Supabase URL from .env (no-cache)..."
-docker compose build --no-cache \
-  --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
-  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+echo "Building Docker image (development mode; no-cache)..."
+docker compose build --no-cache
 echo "Done. Start with: docker compose up -d"
+echo "Supabase and other env vars are loaded from .env at runtime."
 echo "To verify env in container: docker compose run --rm voobi-app sh -c 'echo SUPABASE_URL=\$NEXT_PUBLIC_SUPABASE_URL'"
