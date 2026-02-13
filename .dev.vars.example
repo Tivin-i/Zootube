@@ -1,0 +1,17 @@
+# Copy to .dev.vars for local Cloudflare preview (npm run preview).
+# Do not commit .dev.vars — it may contain secrets.
+# See: https://developers.cloudflare.com/workers/testing/local-development/#local-only-environment-variables
+
+NEXTJS_ENV=development
+
+# Optional: add Supabase, Upstash, Google OAuth vars here for local preview.
+# NEXT_PUBLIC_SUPABASE_URL=
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# SUPABASE_SERVICE_ROLE_KEY=
+# UPSTASH_REDIS_REST_URL=
+# UPSTASH_REDIS_REST_TOKEN=
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# YOUTUBE_OAUTH_ENCRYPTION_KEY=
+# YOUTUBE_API_KEY=
+# APP_URL=http://localhost:8787

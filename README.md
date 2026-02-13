@@ -111,6 +111,24 @@ End-to-end tests use **Playwright** and run against the dev server on **port 300
 
 Tests live in `tests/e2e/` and use page objects in `tests/pages/`. Key flows: device linking, home feed, watch page, navigation, multi-household. Admin login has a smoke spec; full auth flows may require a test Supabase project or mocks.
 
+## Deploy on Cloudflare
+
+The app is set up for [Cloudflare Workers](https://workers.cloudflare.com/) via [OpenNext for Cloudflare](https://opennext.js.org/cloudflare/get-started).
+
+1. **Install and configure:** `@opennextjs/cloudflare` and `wrangler` are already in the project. Copy `.dev.vars.example` to `.dev.vars` if you want to run a local Workers preview with env vars.
+
+2. **Set environment variables** in the [Cloudflare dashboard](https://dash.cloudflare.com/) (Workers & Pages → your worker → Settings → Variables): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and optionally `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, Google OAuth vars, `YOUTUBE_API_KEY`, `APP_URL` (your app’s public URL).
+
+3. **Deploy:** From the project root, run:
+   ```bash
+   npm run deploy:cloudflare
+   ```
+   Or run a local preview in the Workers runtime: `npm run preview`.
+
+   On Windows, set `BUILD_FOR_CLOUDFLARE=1` in your shell before running the OpenNext build if the script does not set it.
+
+4. **Git-based deploy:** You can connect the repo in Cloudflare Pages/Workers and use build command `BUILD_FOR_CLOUDFLARE=1 opennextjs-cloudflare build` and then upload/deploy the `.open-next` output (see [OpenNext Cloudflare](https://opennext.js.org/cloudflare/get-started)).
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

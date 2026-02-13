@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
@@ -19,8 +20,8 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 const nextConfig: NextConfig = {
   // Explicitly enable turbopack (silences the warning)
   turbopack: {},
-  // Enable standalone output for Docker
-  output: "standalone",
+  // Standalone output for Docker; omit when building for Cloudflare (OpenNext)
+  ...(process.env.BUILD_FOR_CLOUDFLARE !== "1" ? { output: "standalone" as const } : {}),
   images: {
     remotePatterns: [
       {
@@ -41,4 +42,9 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(withPWA(nextConfig));
+const config = withBundleAnalyzer(withPWA(nextConfig));
+
+// Enable Cloudflare bindings in local dev (next dev)
+initOpenNextCloudflareForDev();
+
+export default config;
