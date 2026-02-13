@@ -10,9 +10,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "preview": "BUILD_FOR_CLOUDFLARE=1 opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy:cloudflare": "BUILD_FOR_CLOUDFLARE=1 opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "upload:cloudflare": "BUILD_FOR_CLOUDFLARE=1 opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "build:cloudflare": "BUILD_FOR_CLOUDFLARE=1 opennextjs-cloudflare build",
+    "preview": "npm run build:cloudflare && opennextjs-cloudflare preview",
+    "deploy:cloudflare": "npm run build:cloudflare && opennextjs-cloudflare deploy",
+    "upload:cloudflare": "npm run build:cloudflare && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint",
     "test": "jest",
@@ -62,5 +63,10 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.65.0"
+  },
+  "overrides": {
+    "glob": "^12.0.0",
+    "source-map": "^0.7.4",
+    "sourcemap-codec": "npm:@jridgewell/sourcemap-codec@^1.4.15"
   }
 }

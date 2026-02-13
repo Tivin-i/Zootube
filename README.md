@@ -127,7 +127,7 @@ The app is set up for [Cloudflare Workers](https://workers.cloudflare.com/) via 
 
    On Windows, set `BUILD_FOR_CLOUDFLARE=1` in your shell before running the OpenNext build if the script does not set it.
 
-4. **Git-based deploy:** You can connect the repo in Cloudflare Pages/Workers and use build command `BUILD_FOR_CLOUDFLARE=1 opennextjs-cloudflare build` and then upload/deploy the `.open-next` output (see [OpenNext Cloudflare](https://opennext.js.org/cloudflare/get-started)).
+4. **Git-based deploy (Cloudflare dashboard):** Connect the repo in Cloudflare Pages/Workers. Set **Build command** to `npm run build:cloudflare` (so the local `opennextjs-cloudflare` CLI is used). Set **Deploy command** to `npx wrangler deploy`.
 
 ## Deploy on Vercel
 
