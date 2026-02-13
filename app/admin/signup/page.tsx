@@ -9,6 +9,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -16,6 +17,10 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms and Privacy Policy to continue.");
+      return;
+    }
     setLoading(true);
     setError(null);
     setMessage(null);
@@ -140,6 +145,30 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <input
+              id="agree-terms"
+              name="agree-terms"
+              type="checkbox"
+              required
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+              data-testid="admin-signup-agree-terms"
+            />
+            <label htmlFor="agree-terms" className="text-sm text-gray-600">
+              I agree to the{" "}
+              <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:text-blue-500 underline">
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:text-blue-500 underline">
+                Privacy Policy
+              </Link>
+              .
+            </label>
           </div>
 
           {error && (

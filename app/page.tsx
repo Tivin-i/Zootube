@@ -144,7 +144,19 @@ export default function MarketingPage() {
       <footer className="border-t border-gray-200 bg-white px-4 py-8 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
           <p className="text-sm text-gray-500">Voobi — Curated video for kids.</p>
-          <nav className="flex gap-6" aria-label="Footer">
+          <nav className="flex flex-wrap items-center justify-center gap-6" aria-label="Footer">
+            <Link
+              href="/terms"
+              className="text-sm text-gray-600 hover:text-gray-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 rounded"
+            >
+              Terms
+            </Link>
+            <Link
+              href="/privacy"
+              className="text-sm text-gray-600 hover:text-gray-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 rounded"
+            >
+              Privacy
+            </Link>
             <Link
               href="/admin/login"
               className="text-sm text-gray-600 hover:text-gray-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 rounded"

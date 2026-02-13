@@ -125,6 +125,16 @@ export default function LoginPage() {
               Sign up
             </Link>
           </div>
+
+          <nav className="pt-4 text-center text-xs text-gray-500" aria-label="Legal">
+            <Link href="/terms" className="hover:text-gray-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-600 rounded">
+              Terms
+            </Link>
+            <span className="mx-2">·</span>
+            <Link href="/privacy" className="hover:text-gray-700 focus-visible:outline focus-visible:ring-2 focus-visible:ring-blue-600 rounded">
+              Privacy
+            </Link>
+          </nav>
         </form>
       </div>
     </div>
