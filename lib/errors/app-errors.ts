@@ -57,3 +57,12 @@ export class ForbiddenError extends AppError {
     super(message, 403, "FORBIDDEN");
   }
 }
+
+/**
+ * Service unavailable - server config missing or dependency down (e.g. service role key)
+ */
+export class ServiceUnavailableError extends AppError {
+  constructor(message: string = "Service temporarily unavailable") {
+    super(message, 503, "SERVICE_UNAVAILABLE");
+  }
+}

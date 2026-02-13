@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { Parent } from "@/types/database";
 
+/** Escape a string for use in ILIKE so % and _ are not treated as wildcards */
+function escapeIlikePattern(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 export interface ParentRepository {
   findByEmail(email: string): Promise<Parent | null>;
   findById(id: string): Promise<Parent | null>;
@@ -11,12 +16,15 @@ export interface ParentRepository {
  */
 export class SupabaseParentRepository implements ParentRepository {
   async findByEmail(email: string): Promise<Parent | null> {
+    const normalized = email.trim();
+    if (!normalized) return null;
     const supabase = await createClient();
+    // Case-insensitive match: auth.users/parents may store email in original case
     const { data, error } = await supabase
       .from("parents")
       .select("*")
-      .eq("email", email.toLowerCase().trim())
-      .single();
+      .ilike("email", escapeIlikePattern(normalized))
+      .maybeSingle();
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -26,7 +34,7 @@ export class SupabaseParentRepository implements ParentRepository {
       throw new Error(`Failed to find parent by email: ${error.message}`);
     }
 
-    return data;
+    return data ?? null;
   }
 
   async findById(id: string): Promise<Parent | null> {

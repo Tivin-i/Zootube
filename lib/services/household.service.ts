@@ -1,14 +1,16 @@
 import { householdRepository } from "@/lib/repositories/household.repository";
 import { parentRepository } from "@/lib/repositories/parent.repository";
 import { Household } from "@/types/database";
-import { NotFoundError } from "@/lib/errors/app-errors";
+import { NotFoundError, ServiceUnavailableError } from "@/lib/errors/app-errors";
 import { getAdminClientOrNull } from "@/lib/supabase/admin";
 
 export class HouseholdService {
   async createHousehold(parentId: string, name: string): Promise<Household> {
     const admin = getAdminClientOrNull();
     if (!admin) {
-      throw new Error("Service role required to create household");
+      throw new ServiceUnavailableError(
+        "Household creation is temporarily unavailable. Server administrator: set SUPABASE_SERVICE_ROLE_KEY in the server environment (see .env.example)."
+      );
     }
     const { data: household, error: householdError } = await admin
       .from("households")

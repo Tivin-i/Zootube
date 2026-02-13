@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Set up device: "No account found with this email":** Parent lookup by email was case-sensitive while Supabase Auth stores emails in the original sign-up case. Device linking now uses a case-insensitive match (ILIKE with escaped pattern) so the parent is found regardless of email casing.
+
 - **Admin dashboard: OAuth options and Analytics/Video list not loading:** When the households API failed or returned an empty list, `selectedHouseholdId` stayed null, so the Child accounts section (YouTube and linked-children OAuth) and the video/analytics sections never loaded. Fixes: (1) Households fetch now uses `credentials: "include"` and exposes a retry on error. (2) When the list is empty, the dashboard shows a “No household yet” state with a form to create the first household. (3) When no household is selected, video/analytics loading state is cleared so the UI does not show an endless “Loading…”. (4) Safety notice JSX structure corrected so the main content stays inside the layout container. (5) Child accounts and OAuth blocks are shown only when at least one household exists.
 
 ### Changed
