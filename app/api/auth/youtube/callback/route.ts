@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { handleApiError } from "@/lib/utils/error-handler";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { youtubeConnectionService } from "@/lib/services/youtube-connection.service";
 import { getAppUrl } from "@/lib/utils/app-url";
+import { verifyAndDecodeState } from "@/lib/services/youtube-oauth.service";
 
-function adminRedirect(status: "connected" | "error"): Response {
-  const url = `${getAppUrl()}/admin?youtube=${status}`;
+function adminRedirect(status: "connected" | "error", origin?: string): Response {
+  const base = origin ?? getAppUrl();
+  const url = `${base.replace(/\/$/, "")}/admin?youtube=${status}`;
   return Response.redirect(url);
 }
 
@@ -15,6 +16,7 @@ function adminRedirect(status: "connected" | "error"): Response {
  * Exchanges code for tokens, stores connection, redirects to admin.
  */
 export async function GET(request: NextRequest) {
+  let redirectOrigin: string | undefined;
   try {
     await applyRateLimit(request, "auth");
 
@@ -25,19 +27,28 @@ export async function GET(request: NextRequest) {
       return adminRedirect("error");
     }
 
+    try {
+      const payload = verifyAndDecodeState(state);
+      redirectOrigin = payload.redirectOrigin;
+    } catch {
+      // state invalid or expired; still try to redirect to admin with request origin
+      redirectOrigin = new URL(request.url).origin;
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return adminRedirect("error");
+      return adminRedirect("error", redirectOrigin);
     }
 
     await youtubeConnectionService.linkConnectionFromState(state, code, user.id);
-    return adminRedirect("connected");
+    return adminRedirect("connected", redirectOrigin);
   } catch (err) {
     console.error("[youtube/callback] OAuth error:", err instanceof Error ? err.message : "unknown");
-    return adminRedirect("error");
+    const fallbackOrigin = redirectOrigin ?? new URL(request.url).origin;
+    return adminRedirect("error", fallbackOrigin);
   }
 }

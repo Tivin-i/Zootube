@@ -19,7 +19,7 @@ export class ChildConnectionService {
       throw new UnauthorizedError("Session does not match the account that started the connection");
     }
     await householdService.ensureMember(payload.householdId, currentParentId);
-    const userInfo = await exchangeCodeForUserInfo(code);
+    const userInfo = await exchangeCodeForUserInfo(code, payload.redirectOrigin);
     await householdChildrenRepository.upsert({
       household_id: payload.householdId,
       google_sub: userInfo.sub,

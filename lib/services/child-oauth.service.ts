@@ -17,6 +17,8 @@ export interface ChildOAuthStatePayload {
   parentId: string;
   nonce: string;
   exp?: number;
+  /** Request origin so redirect URI matches when APP_URL is unset */
+  redirectOrigin?: string;
 }
 
 const ENCRYPTION_KEY_HINT =
@@ -28,7 +30,9 @@ function getSigningKey(): Buffer {
   return Buffer.from(key.slice(0, 32), "utf8");
 }
 
-export function createSignedChildState(payload: Omit<ChildOAuthStatePayload, "type" | "exp">): string {
+export function createSignedChildState(
+  payload: Omit<ChildOAuthStatePayload, "type" | "exp">
+): string {
   const exp = Date.now() + STATE_EXPIRY_MS;
   const full: ChildOAuthStatePayload = { ...payload, type: CHILD_STATE_TYPE, exp };
   const json = JSON.stringify(full);
@@ -60,14 +64,20 @@ function getChildRedirectUri(): string {
   return `${getAppUrl()}/api/auth/child/callback`;
 }
 
-export function createChildAuthUrl(state: string): string {
+/**
+ * @param requestOrigin - Origin of the request (e.g. https://voobi.app). When set, used for redirect_uri so OAuth works even if APP_URL is unset.
+ */
+export function createChildAuthUrl(state: string, requestOrigin?: string): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not set");
 
+  const redirectUri = requestOrigin
+    ? `${requestOrigin.replace(/\/$/, "")}/api/auth/child/callback`
+    : getChildRedirectUri();
   const oauth2Client = new google.auth.OAuth2(
     clientId,
     process.env.GOOGLE_CLIENT_SECRET,
-    getChildRedirectUri()
+    redirectUri
   );
   return oauth2Client.generateAuthUrl({
     access_type: "offline",
@@ -83,10 +93,18 @@ export interface ChildUserInfo {
   display_name: string | null;
 }
 
-export async function exchangeCodeForUserInfo(code: string): Promise<ChildUserInfo> {
+/**
+ * @param requestOrigin - Must match the redirect_uri used in the auth URL (e.g. from state.redirectOrigin).
+ */
+export async function exchangeCodeForUserInfo(
+  code: string,
+  requestOrigin?: string
+): Promise<ChildUserInfo> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = getChildRedirectUri();
+  const redirectUri = requestOrigin
+    ? `${requestOrigin.replace(/\/$/, "")}/api/auth/child/callback`
+    : getChildRedirectUri();
   if (!clientId || !clientSecret) throw new Error("Google OAuth credentials not configured");
 
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);

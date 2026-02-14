@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **redirect_uri_mismatch when APP_URL unset:** YouTube and child OAuth now derive the redirect URI from the request origin when `APP_URL` is not set. So when users open https://voobi.app and start OAuth, the app sends `https://voobi.app/api/auth/youtube/callback` (or child callback) instead of `http://localhost:3000/...`. The origin is stored in the signed state and reused in the callback for the token exchange and admin redirect. Setting `APP_URL` in Cloudflare remains recommended for email links and consistency.
+
 - **500 on `/api/auth/youtube`:** Configuration errors (e.g. missing `YOUTUBE_OAUTH_ENCRYPTION_KEY` or Google OAuth env) are now returned as 503 with the actual error message and code `CONFIGURATION_ERROR`, so deployers can see what to fix without checking server logs. Other internal errors remain 500 with a generic message.
 
 - **Permissions-Policy:** Set a minimal `Permissions-Policy` in `next.config.ts` (camera, microphone, geolocation disabled) to avoid sending unrecognized directives like `browsing-topics` that trigger console warnings.

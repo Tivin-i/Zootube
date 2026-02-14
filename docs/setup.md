@@ -150,8 +150,9 @@ To let parents link a YouTube account per household (e.g. for future playlist im
 2. Click **Create Credentials** > **OAuth client ID**
 3. If prompted, configure the **OAuth consent screen** (User type: External; add scopes if required)
 4. Application type: **Web application**
-5. Add **Authorized redirect URI**: `https://your-domain.com/api/auth/youtube/callback`  
-   For local dev: `http://localhost:3000/api/auth/youtube/callback`
+5. Add **Authorized redirect URIs** (must match exactly; no trailing slash):
+   - Production: `https://voobi.app/api/auth/youtube/callback` and `https://voobi.app/api/auth/child/callback`
+   - Local dev: `http://localhost:3000/api/auth/youtube/callback` and `http://localhost:3000/api/auth/child/callback`
 6. Create and copy the **Client ID** and **Client secret**
 7. In your app env (Step 4), set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, and `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example`). **Cloudflare:** these are read at **runtime**; set them in the Worker’s Environment variables or Secrets in the Cloudflare dashboard (and in `.dev.vars` for local `npm run preview`), not only as build variables.
 
@@ -233,6 +234,15 @@ Tests use mocks for APIs where possible; some flows (e.g. full device linking wi
 
 ### "YOUTUBE_OAUTH_ENCRYPTION_KEY required for state signing"
 - The key is read at **runtime**, not at build time. If you use **Cloudflare Workers**: set `YOUTUBE_OAUTH_ENCRYPTION_KEY` (and `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`) in the Worker’s **Settings → Variables and Secrets** in the Cloudflare dashboard. For local Workers preview (`npm run preview`), set them in `.dev.vars`. The project uses `nodejs_compat_populate_process_env` so Worker env vars are available on `process.env`.
+
+### "Error 400: redirect_uri_mismatch"
+- The redirect URI sent to Google is built as `{APP_URL}/api/auth/youtube/callback` or `{APP_URL}/api/auth/child/callback` (no trailing slash). It must **exactly** match an **Authorized redirect URI** in your OAuth client.
+- **In Google Cloud Console:** Go to **APIs & Services** → **Credentials** → your OAuth 2.0 Client ID → add these URIs if missing:
+  - `https://voobi.app/api/auth/youtube/callback`
+  - `https://voobi.app/api/auth/child/callback`
+  For local dev also add: `http://localhost:3000/api/auth/youtube/callback`, `http://localhost:3000/api/auth/child/callback`.
+- **In Cloudflare:** Set **APP_URL** to `https://voobi.app` (no trailing slash). If APP_URL is wrong or unset, the app may send a different origin (e.g. `http://localhost:3000` or a workers.dev URL), which will not match Google.
+- Check: scheme (https in production), no trailing slash, correct path (`/api/auth/youtube/callback` or `/api/auth/child/callback`).
 
 ### Database errors
 - Verify all SQL migrations ran successfully

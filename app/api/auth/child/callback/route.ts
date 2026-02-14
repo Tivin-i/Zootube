@@ -3,9 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { childConnectionService } from "@/lib/services/child-connection.service";
 import { getAppUrl } from "@/lib/utils/app-url";
+import { verifyAndDecodeChildState } from "@/lib/services/child-oauth.service";
 
-function adminRedirect(status: "connected" | "error"): Response {
-  const url = `${getAppUrl()}/admin?child=${status}`;
+function adminRedirect(status: "connected" | "error", origin?: string): Response {
+  const base = origin ?? getAppUrl();
+  const url = `${base.replace(/\/$/, "")}/admin?child=${status}`;
   return Response.redirect(url);
 }
 
@@ -14,6 +16,7 @@ function adminRedirect(status: "connected" | "error"): Response {
  * Exchanges code for userinfo, upserts household_children, redirects to admin.
  */
 export async function GET(request: NextRequest) {
+  let redirectOrigin: string | undefined;
   try {
     await applyRateLimit(request, "auth");
 
@@ -24,19 +27,27 @@ export async function GET(request: NextRequest) {
       return adminRedirect("error");
     }
 
+    try {
+      const payload = verifyAndDecodeChildState(state);
+      redirectOrigin = payload.redirectOrigin;
+    } catch {
+      redirectOrigin = new URL(request.url).origin;
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return adminRedirect("error");
+      return adminRedirect("error", redirectOrigin);
     }
 
     await childConnectionService.linkFromState(state, code, user.id);
-    return adminRedirect("connected");
+    return adminRedirect("connected", redirectOrigin);
   } catch (err) {
     console.error("[child/callback] OAuth error:", err instanceof Error ? err.message : "unknown");
-    return adminRedirect("error");
+    const fallbackOrigin = redirectOrigin ?? new URL(request.url).origin;
+    return adminRedirect("error", fallbackOrigin);
   }
 }

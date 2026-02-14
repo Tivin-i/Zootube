@@ -34,12 +34,14 @@ export async function GET(request: NextRequest) {
 
     await householdService.ensureMember(parsed.data, user.id);
 
+    const requestOrigin = new URL(request.url).origin;
     const state = createSignedState({
       householdId: parsed.data,
       parentId: user.id,
       nonce: crypto.randomBytes(16).toString("hex"),
+      redirectOrigin: requestOrigin,
     });
-    const authUrl = createAuthUrl(state);
+    const authUrl = createAuthUrl(state, requestOrigin);
 
     return Response.redirect(authUrl);
   } catch (error) {

@@ -14,6 +14,8 @@ export interface OAuthStatePayload {
   parentId: string;
   nonce: string;
   exp?: number;
+  /** Request origin (e.g. https://voobi.app) so redirect URI matches when APP_URL is unset */
+  redirectOrigin?: string;
 }
 
 const ENCRYPTION_KEY_HINT =
@@ -86,9 +88,14 @@ export function decryptRefreshToken(ciphertext: string): string {
   return decipher.update(enc) + decipher.final("utf8");
 }
 
-export function createAuthUrl(state: string): string {
+/**
+ * @param requestOrigin - Origin of the request (e.g. https://voobi.app). When set, used for redirect_uri so OAuth works even if APP_URL is unset in production.
+ */
+export function createAuthUrl(state: string, requestOrigin?: string): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = getRedirectUri();
+  const redirectUri = requestOrigin
+    ? `${requestOrigin.replace(/\/$/, "")}/api/auth/youtube/callback`
+    : getRedirectUri();
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not set");
 
   const oauth2Client = new google.auth.OAuth2(clientId, process.env.GOOGLE_CLIENT_SECRET, redirectUri);
@@ -100,10 +107,18 @@ export function createAuthUrl(state: string): string {
   });
 }
 
-export async function exchangeCodeForTokens(code: string): Promise<{ refresh_token: string; access_token: string; channelId?: string }> {
+/**
+ * @param requestOrigin - Must match the redirect_uri used in the auth URL (e.g. from state.redirectOrigin). Pass when APP_URL was unset at init.
+ */
+export async function exchangeCodeForTokens(
+  code: string,
+  requestOrigin?: string
+): Promise<{ refresh_token: string; access_token: string; channelId?: string }> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = getRedirectUri();
+  const redirectUri = requestOrigin
+    ? `${requestOrigin.replace(/\/$/, "")}/api/auth/youtube/callback`
+    : getRedirectUri();
   if (!clientId || !clientSecret) throw new Error("Google OAuth credentials not configured");
 
   const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);

@@ -20,9 +20,14 @@ export class YoutubeConnectionService {
     return { connected: true, channelId: row.youtube_channel_id };
   }
 
-  async linkConnection(householdId: string, parentId: string, code: string): Promise<void> {
+  async linkConnection(
+    householdId: string,
+    parentId: string,
+    code: string,
+    requestOrigin?: string
+  ): Promise<void> {
     await householdService.ensureMember(householdId, parentId);
-    const { refresh_token, channelId } = await exchangeCodeForTokens(code);
+    const { refresh_token, channelId } = await exchangeCodeForTokens(code, requestOrigin);
     const encrypted = encryptRefreshToken(refresh_token);
     await youtubeConnectionRepository.upsert({
       household_id: householdId,
@@ -37,7 +42,7 @@ export class YoutubeConnectionService {
     if (payload.parentId !== currentParentId) {
       throw new UnauthorizedError("Session does not match the account that started the connection");
     }
-    await this.linkConnection(payload.householdId, currentParentId, code);
+    await this.linkConnection(payload.householdId, currentParentId, code, payload.redirectOrigin);
     return payload.householdId;
   }
 
