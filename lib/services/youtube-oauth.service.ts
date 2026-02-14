@@ -108,6 +108,8 @@ export function createAuthUrl(state: string, requestOrigin?: string): string {
 }
 
 /**
+ * Exchange code for tokens and fetch channel id using fetch() so it runs on Cloudflare Workers
+ * (googleapis uses Node http which triggers "validateHeaderName is not implemented").
  * @param requestOrigin - Must match the redirect_uri used in the auth URL (e.g. from state.redirectOrigin). Pass when APP_URL was unset at init.
  */
 export async function exchangeCodeForTokens(
@@ -121,19 +123,44 @@ export async function exchangeCodeForTokens(
     : getRedirectUri();
   if (!clientId || !clientSecret) throw new Error("Google OAuth credentials not configured");
 
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-  const { tokens } = await oauth2Client.getToken(code);
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    }).toString(),
+  });
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error(`Google token exchange failed: ${tokenRes.status} ${err}`);
+  }
+  const tokens = (await tokenRes.json()) as {
+    access_token?: string;
+    refresh_token?: string;
+  };
   const refreshToken = tokens.refresh_token;
   if (!refreshToken) throw new Error("No refresh token in response");
 
-  oauth2Client.setCredentials(tokens);
-  const youtube = google.youtube({ version: "v3", auth: oauth2Client });
-  const channels = await youtube.channels.list({ part: ["id"], mine: true });
-  const channelId = channels.data.items?.[0]?.id ?? undefined;
+  const accessToken = tokens.access_token ?? "";
+  let channelId: string | undefined;
+  const channelsRes = await fetch(
+    "https://www.googleapis.com/youtube/v3/channels?part=id&mine=true",
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (channelsRes.ok) {
+    const channelsData = (await channelsRes.json()) as {
+      items?: Array<{ id?: string }>;
+    };
+    channelId = channelsData.items?.[0]?.id ?? undefined;
+  }
 
   return {
     refresh_token: refreshToken,
-    access_token: tokens.access_token ?? "",
+    access_token: accessToken,
     channelId,
   };
 }

@@ -94,6 +94,8 @@ export interface ChildUserInfo {
 }
 
 /**
+ * Exchange code for tokens and fetch userinfo using fetch() so it runs on Cloudflare Workers
+ * (googleapis uses Node http which triggers "validateHeaderName is not implemented").
  * @param requestOrigin - Must match the redirect_uri used in the auth URL (e.g. from state.redirectOrigin).
  */
 export async function exchangeCodeForUserInfo(
@@ -107,13 +109,32 @@ export async function exchangeCodeForUserInfo(
     : getChildRedirectUri();
   if (!clientId || !clientSecret) throw new Error("Google OAuth credentials not configured");
 
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-  const { tokens } = await oauth2Client.getToken(code);
-  oauth2Client.setCredentials(tokens);
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    }).toString(),
+  });
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error(`Google token exchange failed: ${tokenRes.status} ${err}`);
+  }
+  const tokens = (await tokenRes.json()) as { access_token?: string };
+  const accessToken = tokens.access_token;
+  if (!accessToken) throw new Error("No access_token in Google token response");
 
-  const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
-  const { data } = await oauth2.userinfo.get();
-
+  const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!userRes.ok) {
+    throw new Error(`Google userinfo failed: ${userRes.status}`);
+  }
+  const data = (await userRes.json()) as { id?: string; email?: string | null; name?: string | null };
   return {
     sub: data.id ?? "",
     email: data.email ?? null,
