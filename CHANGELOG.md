@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **YouTube batch (whitelist) on Cloudflare Workers:** Replaced googleapis in `POST /api/youtube-batch` with native `fetch()` to YouTube Data API v3 (videos, playlistItems, channels). Fixes "http.validateHeaderName is not implemented yet" when adding a channel/playlist/video to the whitelist on voobi.app.
+
 - **Child/YouTube OAuth on Cloudflare Workers:** Replaced googleapis HTTP calls in the OAuth **callback** (token exchange and userinfo/channels fetch) with native `fetch()`. Fixes "[unenv] http.validateHeaderName is not implemented yet!" when linking a child Google account or YouTube account on voobi.app (Workers runtime does not implement Node's `http.validateHeaderName`). Auth URL generation still uses googleapis (no HTTP there).
 
 - **redirect_uri_mismatch when APP_URL unset:** YouTube and child OAuth now derive the redirect URI from the request origin when `APP_URL` is not set. So when users open https://voobi.app and start OAuth, the app sends `https://voobi.app/api/auth/youtube/callback` (or child callback) instead of `http://localhost:3000/...`. The origin is stored in the signed state and reused in the callback for the token exchange and admin redirect. Setting `APP_URL` in Cloudflare remains recommended for email links and consistency.

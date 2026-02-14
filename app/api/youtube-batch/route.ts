@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { google } from "googleapis";
 import { youtubeBatchSchema } from "@/lib/validators/youtube.validator";
 import { handleApiError } from "@/lib/utils/error-handler";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { UnauthorizedError } from "@/lib/errors/app-errors";
 import { createClient } from "@/lib/supabase/server";
 
-const youtube = google.youtube({
-  version: "v3",
-  auth: process.env.YOUTUBE_API_KEY,
-});
+/** YouTube Data API v3 via fetch (Workers-safe; googleapis uses Node http). */
+function youtubeApiKey(): string {
+  const key = process.env.YOUTUBE_API_KEY;
+  if (!key) throw new Error("YOUTUBE_API_KEY is not set");
+  return key;
+}
+
+async function youtubeFetch(path: string, params: Record<string, string>): Promise<unknown> {
+  const key = youtubeApiKey();
+  const url = new URL(`https://www.googleapis.com/youtube/v3/${path}`);
+  url.searchParams.set("key", key);
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") url.searchParams.set(k, v);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`YouTube API ${res.status}: ${await res.text()}`);
+  return res.json();
+}
 
 // Helper to extract IDs from URLs
 function parseYouTubeUrl(url: string): {
@@ -82,7 +93,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { pageToken } = body;
 
     // Validate input
     const validated = youtubeBatchSchema.parse({
@@ -102,12 +112,17 @@ export async function POST(request: NextRequest) {
 
     // Handle single video
     if (parsed.type === "video") {
-      const response = await youtube.videos.list({
-        part: ["snippet", "contentDetails"],
-        id: [parsed.id],
-      });
+      const data = (await youtubeFetch("videos", {
+        part: "snippet,contentDetails,status",
+        id: parsed.id,
+      })) as { items?: Array<{
+        id?: string;
+        snippet?: { title?: string; thumbnails?: { medium?: { url?: string } } };
+        contentDetails?: { duration?: string };
+        status?: { madeForKids?: boolean };
+      }> };
 
-      const video = response.data.items?.[0];
+      const video = data.items?.[0];
       if (!video) {
         return NextResponse.json({ error: "Video not found" }, { status: 404 });
       }
@@ -121,7 +136,7 @@ export async function POST(request: NextRequest) {
               title: video.snippet?.title,
               thumbnailUrl: video.snippet?.thumbnails?.medium?.url,
               duration: video.contentDetails?.duration,
-              madeForKids: video.status?.madeForKids || false,
+              madeForKids: video.status?.madeForKids ?? false,
             },
           ],
         }),
@@ -134,42 +149,57 @@ export async function POST(request: NextRequest) {
 
     // Handle playlist
     if (parsed.type === "playlist") {
-      const response = await youtube.playlistItems.list({
-        part: ["snippet", "contentDetails"],
+      const listParams: Record<string, string> = {
+        part: "snippet,contentDetails",
         playlistId: parsed.id,
-        maxResults: 20,
-        pageToken: validated.pageToken || undefined,
-      });
+        maxResults: "20",
+      };
+      if (validated.pageToken) listParams.pageToken = validated.pageToken;
+      const listData = (await youtubeFetch("playlistItems", listParams)) as {
+        items?: Array<{ contentDetails?: { videoId?: string } }>;
+        nextPageToken?: string;
+        pageInfo?: { totalResults?: number };
+      };
 
-      const videoIds = response.data.items?.map(
-        (item) => item.contentDetails?.videoId
-      ).filter(Boolean) as string[];
+      const videoIds = (listData.items?.map((item) => item.contentDetails?.videoId).filter(Boolean) ?? []) as string[];
+      if (videoIds.length === 0) {
+        return new Response(
+          JSON.stringify({
+            type: "playlist",
+            videos: [],
+            nextPageToken: listData.nextPageToken,
+            totalResults: listData.pageInfo?.totalResults ?? 0,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-      // Get detailed info for all videos
-      const videosResponse = await youtube.videos.list({
-        part: ["snippet", "contentDetails", "status"],
-        id: videoIds,
-      });
+      const videosData = (await youtubeFetch("videos", {
+        part: "snippet,contentDetails,status",
+        id: videoIds.join(","),
+      })) as { items?: Array<{
+        id?: string;
+        snippet?: { title?: string; thumbnails?: { medium?: { url?: string } } };
+        contentDetails?: { duration?: string };
+        status?: { madeForKids?: boolean };
+      }> };
 
-      const videos = videosResponse.data.items?.map((video) => ({
+      const videos = (videosData.items ?? []).map((video) => ({
         videoId: video.id,
         title: video.snippet?.title,
         thumbnailUrl: video.snippet?.thumbnails?.medium?.url,
         duration: video.contentDetails?.duration,
-        madeForKids: video.status?.madeForKids || false,
+        madeForKids: video.status?.madeForKids ?? false,
       }));
 
       return new Response(
         JSON.stringify({
           type: "playlist",
           videos,
-          nextPageToken: response.data.nextPageToken,
-          totalResults: response.data.pageInfo?.totalResults,
+          nextPageToken: listData.nextPageToken,
+          totalResults: listData.pageInfo?.totalResults,
         }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
+        { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -179,25 +209,25 @@ export async function POST(request: NextRequest) {
 
       // If it's a username or handle, resolve to channel ID
       if (!channelId.startsWith("UC")) {
-        const channelResponse = await youtube.channels.list({
-          part: ["id"],
-          forHandle: parsed.id.startsWith("@") ? parsed.id.slice(1) : undefined,
-          forUsername: !parsed.id.startsWith("@") ? parsed.id : undefined,
-        });
-
-        channelId = channelResponse.data.items?.[0]?.id || channelId;
+        const channelParams: Record<string, string> = { part: "id" };
+        if (parsed.id.startsWith("@")) {
+          channelParams.forHandle = parsed.id.slice(1);
+        } else {
+          channelParams.forUsername = parsed.id;
+        }
+        const channelData = (await youtubeFetch("channels", channelParams)) as {
+          items?: Array<{ id?: string }>;
+        };
+        channelId = channelData.items?.[0]?.id ?? channelId;
       }
 
       // Get uploads playlist ID
-      const channelResponse = await youtube.channels.list({
-        part: ["contentDetails"],
-        id: [channelId],
-      });
+      const channelDetails = (await youtubeFetch("channels", {
+        part: "contentDetails",
+        id: channelId,
+      })) as { items?: Array<{ contentDetails?: { relatedPlaylists?: { uploads?: string } } }> };
 
-      const uploadsPlaylistId =
-        channelResponse.data.items?.[0]?.contentDetails?.relatedPlaylists
-          ?.uploads;
-
+      const uploadsPlaylistId = channelDetails.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
       if (!uploadsPlaylistId) {
         return NextResponse.json(
           { error: "Channel not found or has no videos" },
@@ -206,42 +236,57 @@ export async function POST(request: NextRequest) {
       }
 
       // Get videos from uploads playlist
-      const response = await youtube.playlistItems.list({
-        part: ["snippet", "contentDetails"],
+      const listParams: Record<string, string> = {
+        part: "snippet,contentDetails",
         playlistId: uploadsPlaylistId,
-        maxResults: 20,
-        pageToken: validated.pageToken || undefined,
-      });
+        maxResults: "20",
+      };
+      if (validated.pageToken) listParams.pageToken = validated.pageToken;
+      const listData = (await youtubeFetch("playlistItems", listParams)) as {
+        items?: Array<{ contentDetails?: { videoId?: string } }>;
+        nextPageToken?: string;
+        pageInfo?: { totalResults?: number };
+      };
 
-      const videoIds = response.data.items?.map(
-        (item) => item.contentDetails?.videoId
-      ).filter(Boolean) as string[];
+      const videoIds = (listData.items?.map((item) => item.contentDetails?.videoId).filter(Boolean) ?? []) as string[];
+      if (videoIds.length === 0) {
+        return new Response(
+          JSON.stringify({
+            type: "channel",
+            videos: [],
+            nextPageToken: listData.nextPageToken,
+            totalResults: listData.pageInfo?.totalResults ?? 0,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-      // Get detailed info for all videos
-      const videosResponse = await youtube.videos.list({
-        part: ["snippet", "contentDetails", "status"],
-        id: videoIds,
-      });
+      const videosData = (await youtubeFetch("videos", {
+        part: "snippet,contentDetails,status",
+        id: videoIds.join(","),
+      })) as { items?: Array<{
+        id?: string;
+        snippet?: { title?: string; thumbnails?: { medium?: { url?: string } } };
+        contentDetails?: { duration?: string };
+        status?: { madeForKids?: boolean };
+      }> };
 
-      const videos = videosResponse.data.items?.map((video) => ({
+      const videos = (videosData.items ?? []).map((video) => ({
         videoId: video.id,
         title: video.snippet?.title,
         thumbnailUrl: video.snippet?.thumbnails?.medium?.url,
         duration: video.contentDetails?.duration,
-        madeForKids: video.status?.madeForKids || false,
+        madeForKids: video.status?.madeForKids ?? false,
       }));
 
       return new Response(
         JSON.stringify({
           type: "channel",
           videos,
-          nextPageToken: response.data.nextPageToken,
-          totalResults: response.data.pageInfo?.totalResults,
+          nextPageToken: listData.nextPageToken,
+          totalResults: listData.pageInfo?.totalResults,
         }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
+        { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
 
