@@ -4,8 +4,13 @@ import { NextRequest } from "next/server";
 import { RateLimitError } from "@/lib/errors/app-errors";
 
 // Initialize Redis client (use environment variables in production)
-// For development, we'll use a simple in-memory fallback
-let ratelimit: Ratelimit | null = null;
+// For development, we'll use a simple in-memory fallback.
+// Use separate limiters per type so auth read-heavy endpoints don't share a tiny bucket with strict auth actions.
+let limiters: {
+  public: Ratelimit | null;
+  auth: Ratelimit | null;
+  videoAdd: Ratelimit | null;
+} = { public: null, auth: null, videoAdd: null };
 
 try {
   if (
@@ -17,11 +22,23 @@ try {
       token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
 
-    ratelimit = new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, "15 m"),
-      analytics: true,
-    });
+    limiters = {
+      public: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(100, "15 m"),
+        analytics: true,
+      }),
+      auth: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(60, "15 m"),
+        analytics: true,
+      }),
+      videoAdd: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(20, "60 m"),
+        analytics: true,
+      }),
+    };
   }
 } catch (error) {
   console.warn("Rate limiting disabled: Redis not configured", error);
@@ -73,12 +90,12 @@ class InMemoryRateLimiter {
   }
 }
 
-// Create in-memory rate limiters for different endpoints
+// Create in-memory rate limiters for different endpoints (aligned with Upstash limits)
 const rateLimiters = {
   // Public endpoints: 100 requests per 15 minutes
   public: new InMemoryRateLimiter(100, 15),
-  // Auth endpoints: 10 requests per 15 minutes
-  auth: new InMemoryRateLimiter(10, 15),
+  // Auth endpoints: 60 requests per 15 minutes (read-heavy: children, youtube-connection, households, etc.)
+  auth: new InMemoryRateLimiter(60, 15),
   // Video add: 20 requests per hour
   videoAdd: new InMemoryRateLimiter(20, 60),
 };
@@ -102,11 +119,11 @@ export async function applyRateLimit(
   request: NextRequest,
   type: "public" | "auth" | "videoAdd" = "public"
 ): Promise<void> {
-  // Use Upstash if configured, otherwise use in-memory limiter
-  if (ratelimit) {
-    const identifier = getClientIdentifier(request);
-    const result = await ratelimit.limit(identifier);
-    
+  const limiter = limiters[type];
+  if (limiter) {
+    const identifier = `${type}:${getClientIdentifier(request)}`;
+    const result = await limiter.limit(identifier);
+
     if (!result.success) {
       throw new RateLimitError(
         `Rate limit exceeded. Try again in ${result.reset} seconds.`
