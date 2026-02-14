@@ -62,10 +62,20 @@ export async function POST(request: NextRequest) {
     await applyRateLimit(request, "videoAdd");
 
     // Check authentication
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    let user: { id: string } | null = null;
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      user = data.user;
+    } catch (err) {
+      // Supabase unreachable (e.g. DNS EAI_AGAIN, network) — don't report as 401
+      return NextResponse.json(
+        {
+          error: "Authentication service temporarily unavailable. Please try again.",
+        },
+        { status: 503 }
+      );
+    }
 
     if (!user) {
       throw new UnauthorizedError("Authentication required");

@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **README: Custom domain (voobi.app):** Documented why the Worker may work on workers.dev but not on https://voobi.app: the domain must be added to Cloudflare and the Custom Domain attached in Workers & Pages → voobi → Settings → Domains & Routes. Steps and link to Cloudflare Custom Domains docs added.
+
 ### Changed
+
+- **Wrangler (Cloudflare):** Added explicit `observability` config to `wrangler.jsonc` for consistent deployments: logs enabled with persist and invocation_logs; traces disabled; head_sampling_rate 1 for both.
 
 - **Rate limiting:** Use separate limiters per type (public / auth / videoAdd) so 429s happen less often. When Upstash Redis is configured, auth endpoints (e.g. `/api/children`, `/api/youtube-connection`, `/api/households`) now get 60 requests per 15 minutes per IP instead of sharing a single 10/15m bucket. Public stays 100/15m; videoAdd 20/60m. In-memory limiters (no Redis) now use the same auth limit (60/15m) for consistency.
 

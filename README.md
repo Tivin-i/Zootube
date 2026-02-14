@@ -129,6 +129,17 @@ The app is set up for [Cloudflare Workers](https://workers.cloudflare.com/) via 
 
 4. **Git-based deploy (Cloudflare dashboard):** Connect the repo in Cloudflare Pages/Workers. Set **Build command** to `npm run build:cloudflare` (so the local `opennextjs-cloudflare` CLI is used). Set **Deploy command** to `npx wrangler deploy`.
 
+### Custom domain (e.g. voobi.app)
+
+`wrangler.jsonc` is set up with a Custom Domain route for `voobi.app`. **workers.dev** works automatically; a custom domain only works if the domain is on Cloudflare in the same account as the Worker.
+
+- **If https://voobi.app does not work** (but `voobi.<account>.workers.dev` does):
+  1. **Add the domain to Cloudflare:** In the [Cloudflare dashboard](https://dash.cloudflare.com/), go to **Websites** and add `voobi.app` (or the zone that contains it). Use Cloudflare’s nameservers for the domain so the zone is “Active”.
+  2. **Attach the Custom Domain to the Worker:** Go to **Workers & Pages** → select the **voobi** worker → **Settings** → **Domains & Routes** → **Add** → **Custom Domain** → enter `voobi.app`. Cloudflare will create the DNS record and certificate.
+  3. **Set `APP_URL`** in the Worker’s environment variables (and in Supabase / Google OAuth redirect URIs) to `https://voobi.app`.
+
+You cannot use a Custom Domain on a hostname that already has a CNAME in DNS or on a zone you don’t own in Cloudflare. See [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
