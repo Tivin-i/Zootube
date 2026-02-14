@@ -61,7 +61,9 @@ export default function VideoAddForm({
 
       if (!response.ok) {
         if (response.status === 403 && data.code === "YOUTUBE_CONNECTION_REQUIRED") {
-          onError("Connect the child's YouTube account for this list before adding videos or channels.");
+          onError(
+            data.error || "Use the \"Connect YouTube\" button in the \"Child's YouTube account\" section for this list, then try again."
+          );
         } else {
           onError(data.error || "Failed to add video");
         }
@@ -146,7 +148,7 @@ export default function VideoAddForm({
         const msg = data.error || "Failed to fetch videos";
         if (response.status === 403 && data.code === "YOUTUBE_CONNECTION_REQUIRED") {
           onError(
-            "Connect the child's YouTube account for this list before adding videos or channels."
+            data.error || "Use the \"Connect YouTube\" button in the \"Child's YouTube account\" section for this list, then try again."
           );
         } else {
           onError(msg);

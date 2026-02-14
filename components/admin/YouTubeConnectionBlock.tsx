@@ -27,7 +27,7 @@ export default function YouTubeConnectionBlock({
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <h2 className="text-base font-semibold text-gray-900">Child&apos;s YouTube account</h2>
       <p className="mt-1 text-sm text-gray-500">
-        Connect the YouTube account for this list (e.g. your child&apos;s). One per list.
+        Required to add videos or channels to this list. Connect the YouTube account for this list (e.g. your child&apos;s). One per list.
       </p>
       {error && (
         <div className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">

@@ -10,7 +10,7 @@ import { getAccessTokenFromRefreshToken } from "@/lib/services/youtube-oauth.ser
 import { youtubeFetchWithAccessToken } from "@/lib/youtube-oauth-api";
 
 const YOUTUBE_CONNECTION_REQUIRED_MESSAGE =
-  "Connect the child's YouTube account for this list before adding videos or channels.";
+  "Adding videos uses this list's YouTube connection, not the linked child account. Use the \"Connect YouTube\" button in the \"Child's YouTube account\" section above for this list, then try again.";
 
 // Helper to extract IDs from URLs
 function parseYouTubeUrl(url: string): {

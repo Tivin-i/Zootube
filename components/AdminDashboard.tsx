@@ -478,6 +478,9 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           {effectiveHouseholdId && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900">Child accounts</h2>
+            <p className="text-sm text-gray-500">
+              To add videos to this list, use <strong>Connect YouTube</strong> below (one per list). Linking a child with <strong>Add child</strong> is separate.
+            </p>
             <YouTubeConnectionBlock
               householdId={effectiveHouseholdId}
               status={youtubeStatus}

@@ -63,7 +63,7 @@ export class ForbiddenError extends AppError {
  */
 export class YouTubeConnectionRequiredError extends AppError {
   constructor(
-    message: string = "Connect the child's YouTube account for this list before adding videos."
+    message: string = "Adding videos uses this list's YouTube connection, not the linked child account. Use the \"Connect YouTube\" button in the \"Child's YouTube account\" section for this list, then try again."
   ) {
     super(message, 403, "YOUTUBE_CONNECTION_REQUIRED");
   }
