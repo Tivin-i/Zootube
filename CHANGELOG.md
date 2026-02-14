@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Rate limiting:** Use separate limiters per type (public / auth / videoAdd) so 429s happen less often. When Upstash Redis is configured, auth endpoints (e.g. `/api/children`, `/api/youtube-connection`, `/api/households`) now get 60 requests per 15 minutes per IP instead of sharing a single 10/15m bucket. Public stays 100/15m; videoAdd 20/60m. In-memory limiters (no Redis) now use the same auth limit (60/15m) for consistency.
+
+### Fixed
+
+- **POST /api/youtube-batch:** When Supabase is unreachable (e.g. DNS `EAI_AGAIN`), the route now returns 503 "Authentication service temporarily unavailable" instead of 401, so clients can retry instead of treating it as "not logged in".
+
 ### Added
+
+- **Cloudflare custom domain (voobi.app):** `wrangler.jsonc` now includes a Custom Domain route for `voobi.app` so the Worker serves the site at that domain after deploy. Ensure the zone is on Cloudflare and set `APP_URL` (and OAuth redirect URIs) to `https://voobi.app` as needed.
 
 - **Optional phase: Logic walkthrough (thinking/reasoning model).** Completed the optional phase of the Architecture Security Tests Review plan. (1) **Logic walkthrough:** For each of the five flows (parent-by-email, device token, auth callbacks, video watch count, household membership), documented assumptions at each step, branch enumeration, races/ordering, and possible issues with locations. Added Mermaid flow diagrams for parent-by-email, device token, and auth callbacks. Deliverables in `.cursor/plans/`: `OPTIONAL_PHASE_LOGIC_WALKTHROUGH.md`, `OPTIONAL_PHASE_CODE_REVIEWER_PASS.md`, `OPTIONAL_PHASE_SECURITY_CROSSCHECK.md`. (2) **Code Reviewer pass:** Reviewed all flow-related routes and services; no Critical or High issues; Warnings/Suggestions (extract parent+households resolver, callback logging, JSDoc for listUsers cap). (3) **Security Reviewer cross-check:** OWASP-oriented checklist and npm audit (0 vulnerabilities). Confirmed device-token enforces parentId === user.id and auth callbacks enforce state.parentId === session user.
 
