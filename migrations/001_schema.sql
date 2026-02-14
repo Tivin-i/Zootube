@@ -1,5 +1,5 @@
 -- Single migration: full schema for Voobi (parents, households, videos, device tokens, YouTube, children).
--- Run once in Supabase SQL Editor. Idempotent: safe to re-run (uses IF NOT EXISTS / DROP IF EXISTS where applicable).
+-- Squashed from 001–004. Run once in Supabase SQL Editor. Idempotent: safe to re-run (uses IF NOT EXISTS / DROP IF EXISTS where applicable).
 
 -- =============================================================================
 -- 1. Parents (synced with auth.users)
@@ -159,6 +159,34 @@ AS $$
   SELECT household_id FROM public.household_members WHERE parent_id = auth.uid() AND role = 'owner';
 $$;
 
+-- Ensure parent and default household exist from auth.users (for device linking when trigger missed)
+CREATE OR REPLACE FUNCTION public.ensure_parent_from_auth_email(lookup_email text)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  uid uuid;
+BEGIN
+  SELECT id INTO uid FROM auth.users WHERE lower(email) = lower(trim(lookup_email)) LIMIT 1;
+  IF uid IS NULL THEN
+    RETURN NULL;
+  END IF;
+  INSERT INTO public.parents (id, email, created_at)
+  SELECT id, email, created_at FROM auth.users WHERE id = uid
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO public.households (id, name, created_at)
+  VALUES (uid, 'My list', NOW())
+  ON CONFLICT (id) DO NOTHING;
+  INSERT INTO public.household_members (household_id, parent_id, role, joined_at)
+  VALUES (uid, uid, 'owner', NOW())
+  ON CONFLICT (household_id, parent_id) DO NOTHING;
+  RETURN uid;
+END;
+$$;
+COMMENT ON FUNCTION public.ensure_parent_from_auth_email(text) IS 'Backfill parent and default household from auth.users for device linking; returns parent id or null.';
+
 -- =============================================================================
 -- 6. RLS: households
 -- =============================================================================
@@ -309,3 +337,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.device_tokens TO authenticated;
 
 GRANT EXECUTE ON FUNCTION public.current_user_household_ids() TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.current_user_owner_household_ids() TO authenticated, anon;
+
+-- Service role (SUPABASE_SERVICE_ROLE_KEY): used server-side to create households,
+-- add household_members, and manage device_tokens; bypasses RLS but needs table grants.
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.households TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.household_members TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.device_tokens TO service_role;
+GRANT EXECUTE ON FUNCTION public.current_user_household_ids() TO service_role;
+GRANT EXECUTE ON FUNCTION public.current_user_owner_household_ids() TO service_role;
+GRANT EXECUTE ON FUNCTION public.ensure_parent_from_auth_email(text) TO service_role;
+-- Admin fallback (parent lookup/backfill without RPC)
+GRANT SELECT, INSERT, UPDATE ON public.parents TO service_role;

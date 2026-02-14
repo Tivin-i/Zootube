@@ -172,13 +172,13 @@ export default function SignupPage() {
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
+            <div className="rounded-md bg-red-50 p-4" role="alert" aria-live="polite">
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
 
           {message && (
-            <div className="rounded-md bg-green-50 p-4">
+            <div className="rounded-md bg-green-50 p-4" role="status" aria-live="polite">
               <p className="text-sm text-green-800">{message}</p>
             </div>
           )}
@@ -189,7 +189,7 @@ export default function SignupPage() {
               disabled={loading}
               className="group relative flex w-full justify-center rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Creating account..." : "Sign up"}
+              {loading ? "Creating account…" : "Sign up"}
             </button>
           </div>
 

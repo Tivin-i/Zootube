@@ -9,6 +9,8 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
+  // Use V8 coverage to avoid babel-plugin-istanbul/test-exclude (incompatible with glob@12 override)
+  coverageProvider: 'v8',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },

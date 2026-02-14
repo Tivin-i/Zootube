@@ -87,6 +87,7 @@ export async function createDeviceToken(householdId: string, parentId: string): 
  * Validate device token and return household ID (and optional parent ID).
  * Uses DB lookup when service role is set; otherwise falls back to parent_id cookie (dev only).
  * In production, cookie-only fallback is disabled: SUPABASE_SERVICE_ROLE_KEY must be set.
+ * Deployment checklist: require SUPABASE_SERVICE_ROLE_KEY in production for device linking.
  */
 export async function validateDeviceToken(): Promise<ValidateDeviceTokenResult | null> {
   const cookieStore = await cookies();

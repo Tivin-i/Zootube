@@ -1,21 +1,30 @@
 import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createDeviceToken, validateDeviceToken, clearDeviceToken } from "@/lib/services/device-token.service";
 import { householdService } from "@/lib/services/household.service";
 import { handleApiError } from "@/lib/utils/error-handler";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { householdIdSchema } from "@/lib/validators/household.validator";
 import { parentIdSchema } from "@/lib/validators/parent.validator";
-import { ValidationError } from "@/lib/errors/app-errors";
+import { ValidationError, UnauthorizedError } from "@/lib/errors/app-errors";
 
 /**
  * POST /api/device-token
  * Create a device token for device linking (DB-backed when SUPABASE_SERVICE_ROLE_KEY is set).
  * Body: { householdId: string, parentId: string }
- * Caller must ensure parentId is a member of the household.
+ * Requires authenticated session; parentId must match the signed-in user.
  */
 export async function POST(request: NextRequest) {
   try {
     await applyRateLimit(request, "auth");
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      throw new UnauthorizedError("You must be signed in to link a device");
+    }
 
     const body = await request.json();
     const { householdId, parentId } = body;
@@ -29,6 +38,10 @@ export async function POST(request: NextRequest) {
 
     const validatedHouseholdId = householdIdSchema.parse(householdId);
     const validatedParentId = parentIdSchema.parse(parentId);
+
+    if (validatedParentId !== user.id) {
+      throw new UnauthorizedError("parentId must match the signed-in user");
+    }
 
     await householdService.ensureMember(validatedHouseholdId, validatedParentId);
 

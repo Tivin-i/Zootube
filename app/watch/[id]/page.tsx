@@ -7,7 +7,7 @@ import KidsHeader from "@/components/KidsHeader";
 import WatchPagePlayer, { WatchPagePlayerHandle } from "@/components/watch/WatchPagePlayer";
 import BreakModal from "@/components/video/BreakModal";
 import DoneModal from "@/components/video/DoneModal";
-import { MAX_RECOMMENDATIONS } from "@/lib/utils/constants";
+import { MAX_RECOMMENDATIONS, SELECTED_CHILD_NAME_KEY } from "@/lib/utils/constants";
 
 export default function WatchPage() {
   const router = useRouter();
@@ -24,6 +24,14 @@ export default function WatchPage() {
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [householdIdLoading, setHouseholdIdLoading] = useState(true);
+  const [childName, setChildName] = useState<string>("Me");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const name = localStorage.getItem(SELECTED_CHILD_NAME_KEY);
+      if (name) setChildName(name);
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/device-token")
@@ -169,7 +177,7 @@ export default function WatchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <KidsHeader showBackButton={true} showUserMenu={false} />
+      <KidsHeader showBackButton={true} showUserMenu={false} childName={childName} />
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <h2 className="sr-only" data-testid="video-title">{video.title}</h2>
         <div className="space-y-8">

@@ -31,9 +31,11 @@ npm install
 
 ### 2.2 Run Database Migration
 
+**Single migration:** Run `migrations/001_schema.sql` once. It contains the full schema (parents, households, household_members, videos, device_tokens, youtube_connections, household_children), RLS, triggers, backfills, and all grants including service_role. Idempotent; safe to re-run.
+
 1. In Supabase dashboard, go to **SQL Editor**
 2. Click **"New Query"**
-3. Copy and paste the SQL from below
+3. Copy and paste the SQL from `migrations/001_schema.sql` (or from below for the minimal schema)
 4. Click **"Run"**
 
 ```sql
@@ -153,7 +155,7 @@ To let parents link a YouTube account per household (e.g. for future playlist im
 6. Create and copy the **Client ID** and **Client secret**
 7. In your app env (Step 4), set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, and `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example`)
 
-Run the `youtube_connections` migration (see [README](../README.md) or migrations folder) so the feature can store linked accounts.
+The `youtube_connections` table is created by `migrations/001_schema.sql`; no separate migration is needed.
 
 ## Step 4: Configure Environment Variables
 
@@ -164,6 +166,7 @@ Run the `youtube_connections` migration (see [README](../README.md) or migration
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxxxx...
+# Required in production for device linking (DB-backed device tokens). In dev, optional (cookie-only fallback exists).
 SUPABASE_SERVICE_ROLE_KEY=eyJxxxxx...
 
 # YouTube Data API v3
@@ -232,6 +235,7 @@ Tests use mocks for APIs where possible; some flows (e.g. full device linking wi
 - Verify all SQL migrations ran successfully
 - Check Row Level Security policies are enabled
 - Ensure the trigger function was created
+- **"Permission denied for table households"** when creating a household: the service role needs table grants. Run `migrations/001_schema.sql` in the Supabase SQL Editor (it includes all service_role grants).
 
 ## Next Steps
 

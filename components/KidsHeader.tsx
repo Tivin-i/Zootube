@@ -5,32 +5,49 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { DEFAULT_CHILD_NAME } from "@/lib/utils/constants";
 
+export interface ChildOption {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+}
+
 interface KidsHeaderProps {
   showBackButton?: boolean;
   showUserMenu?: boolean;
   childName?: string;
+  /** When set with multiple items, menu shows a profile switcher */
+  children?: ChildOption[];
+  selectedChildId?: string | null;
+  onSelectChild?: (childId: string) => void;
 }
 
 export default function KidsHeader({
   showBackButton = false,
   showUserMenu = true,
   childName = DEFAULT_CHILD_NAME,
+  children: childOptions,
+  selectedChildId,
+  onSelectChild,
 }: KidsHeaderProps) {
   const [showMenu, setShowMenu] = useState(false);
   const router = useRouter();
+  const canSwitchChild = childOptions && childOptions.length > 1 && onSelectChild;
 
   const handleUnlinkDevice = async () => {
     if (confirm("Are you sure you want to unlink this device?")) {
       try {
-        // Clear device token via API
         await fetch("/api/device-token", { method: "DELETE" });
         router.push("/link-device");
       } catch (error) {
         console.error("Failed to unlink device:", error);
-        // Still redirect even if API call fails
         router.push("/link-device");
       }
     }
+    setShowMenu(false);
+  };
+
+  const handleSelectChild = (id: string) => {
+    onSelectChild?.(id);
     setShowMenu(false);
   };
 
@@ -38,7 +55,6 @@ export default function KidsHeader({
     <header className="sticky top-0 z-40 bg-white px-4 py-3 shadow-md sm:px-6">
       <div className="mx-auto max-w-7xl">
         <div className="flex items-center justify-between">
-          {/* Left side - Logo/Brand with optional back button */}
           <div className="flex items-center gap-2">
             {showBackButton && (
               <button
@@ -73,7 +89,6 @@ export default function KidsHeader({
             </h1>
           </div>
 
-          {/* Right side - User menu */}
           {showUserMenu && (
             <div className="relative z-50">
               <button
@@ -98,7 +113,19 @@ export default function KidsHeader({
                 <span className="font-geist-sans">{childName}</span>
               </button>
               {showMenu && (
-                <div className="absolute right-0 top-full mt-2 w-40 rounded-lg bg-white shadow-lg">
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-lg bg-white shadow-lg">
+                  {canSwitchChild &&
+                    childOptions
+                      .filter((c) => c.id !== selectedChildId)
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => handleSelectChild(c.id)}
+                          className="w-full rounded-lg px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          {c.display_name || c.email || "Profile"}
+                        </button>
+                      ))}
                   <button
                     onClick={handleUnlinkDevice}
                     className="w-full rounded-lg px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100"

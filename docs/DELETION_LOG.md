@@ -1,24 +1,29 @@
-# Phase 3 Deletion Log
+# Deletion Log (Refactor Cleaner)
 
-Record of removals during Phase 3 refactor. Append entries after each change.
+Records safe removals applied during Phase 3 refactor. No behavior changes intended.
 
-## Format
+## 2026-02-14 (Phase 3)
 
-- **Dependencies:** package name and version removed.
-- **Files:** path and (if applicable) replacement path.
-- **Exports:** file and symbol name.
+### Files removed (unused)
 
----
+| File | Reason |
+|------|--------|
+| `lib/hooks/useParentId.ts` | Unused hook; no imports in codebase (knip). |
+| `lib/validators/api-responses.validator.ts` | Unused; no imports (knip). |
+| `lib/validators/database.validator.ts` | Unused; only imported by api-responses.validator (knip). |
 
-## 2026-02-05
+### Migrations squashed (2026-02-14)
 
-### Unused dependencies removed
+| File | Reason |
+|------|--------|
+| `migrations/002_service_role_grants.sql` | Squashed into `001_schema.sql` (service_role grants already in 001). |
+| `migrations/003_ensure_parent_from_auth.sql` | Squashed into `001_schema.sql` (function and EXECUTE grant already in 001). |
+| `migrations/004_service_role_parents.sql` | Squashed into `001_schema.sql` (added `GRANT SELECT, INSERT, UPDATE ON public.parents TO service_role`). |
 
-- **class-variance-authority** @ ^0.7.1 — Removed. No usage (`cva(` or import) found in codebase; reported unused by depcheck in Phase 2.
+### Files / exports intentionally kept
 
-### Extractions (no deletions; new files)
-
-- **components/watch/WatchPagePlayer.tsx** — Player + fullscreen for watch page; uses `useVideoPlayer` and `lib/utils/fullscreen`.
-- **components/watch/RecommendationsGrid.tsx** — Shared recommendation thumbnail grid with `formatDuration`; used by BreakModal and watch break UI.
-- **components/admin/YouTubeConnectionBlock.tsx** — YouTube status, connect/disconnect, toast; used by AdminDashboard.
-- **lib/hooks/useYoutubeConnection.ts** — Hook for YouTube connection status and actions; used by AdminDashboard.
+- `open-next.config.ts` — Used by Cloudflare/OpenNext build (`build:cloudflare`).
+- `scripts/list-users.js` — Dev/ops script; kept.
+- `lib/utils/fullscreen.ts` — `exitFullscreen`, `isFullscreen` kept for API completeness; some callers may use them.
+- `lib/errors/app-errors.ts` — `ForbiddenError` kept for future use.
+- `components/ui/table.tsx` — `TableFooter`, `TableCaption` kept for component API.

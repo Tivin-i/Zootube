@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
 
     await childConnectionService.linkFromState(state, code, user.id);
     return adminRedirect("connected");
-  } catch {
+  } catch (err) {
+    console.error("[child/callback] OAuth error:", err instanceof Error ? err.message : "unknown");
     return adminRedirect("error");
   }
 }

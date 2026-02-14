@@ -55,7 +55,7 @@ describe('Error Handler', () => {
 
   it('should handle unknown errors in production', async () => {
     const originalEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'production'
+    Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true, configurable: true })
     
     const error = new Error('Sensitive error message')
     const response = handleApiError(error)
@@ -63,12 +63,12 @@ describe('Error Handler', () => {
     expect(response.status).toBe(500)
     const data = await response.json()
     expect(data.error).toBe('Internal server error')
-    process.env.NODE_ENV = originalEnv
+    Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true, configurable: true })
   })
 
   it('should show error details in development', async () => {
     const originalEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'development'
+    Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', writable: true, configurable: true })
     
     const error = new Error('Development error message')
     const response = handleApiError(error)
@@ -76,7 +76,7 @@ describe('Error Handler', () => {
     expect(response.status).toBe(500)
     const data = await response.json()
     expect(data.error).toBe('Development error message')
-    process.env.NODE_ENV = originalEnv
+    Object.defineProperty(process.env, 'NODE_ENV', { value: originalEnv, writable: true, configurable: true })
   })
 
   // Note: ZodError test skipped due to Next.js server mocking complexity

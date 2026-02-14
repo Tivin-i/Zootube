@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
 
     await youtubeConnectionService.linkConnectionFromState(state, code, user.id);
     return adminRedirect("connected");
-  } catch {
+  } catch (err) {
+    console.error("[youtube/callback] OAuth error:", err instanceof Error ? err.message : "unknown");
     return adminRedirect("error");
   }
 }

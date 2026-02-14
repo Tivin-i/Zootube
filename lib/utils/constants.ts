@@ -13,8 +13,12 @@ export const TOKEN_LENGTH = 32;
 export const DEVICE_TOKEN_COOKIE_NAME = "voobi_device_token";
 export const PARENT_ID_COOKIE_NAME = "voobi_parent_id_secure";
 
-// UI Defaults
+// UI Defaults (fallback when no linked child is selected)
 export const DEFAULT_CHILD_NAME = "Zoe";
+
+// Device feed: selected linked child (localStorage keys)
+export const SELECTED_CHILD_ID_KEY = "voobi_selected_child_id";
+export const SELECTED_CHILD_NAME_KEY = "voobi_selected_child_name";
 
 // YouTube Player Configuration
 export const YOUTUBE_PLAYER_MIN_WIDTH = 200;

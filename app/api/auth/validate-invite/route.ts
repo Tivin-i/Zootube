@@ -27,11 +27,12 @@ export async function POST(request: NextRequest) {
     const allowedCodes = envCode ? [envCode, ...envCodes] : envCodes;
 
     if (allowedCodes.length === 0) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn(
-          "[validate-invite] BETA_INVITE_CODE is empty or unset – signup is open. Restart the dev server after setting BETA_INVITE_CODE in .env or .env.local."
-        );
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json({ valid: false, error: "Signup is not open" }, { status: 403 });
       }
+      console.warn(
+        "[validate-invite] BETA_INVITE_CODE is empty or unset – signup is open. Restart the dev server after setting BETA_INVITE_CODE in .env or .env.local."
+      );
       return NextResponse.json({ valid: true }, { status: 200 });
     }
 

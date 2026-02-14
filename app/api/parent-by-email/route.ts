@@ -25,15 +25,33 @@ export async function GET(request: NextRequest) {
       parentId = await parentService.findParentByEmail(query.email);
     } catch (err) {
       if (err instanceof NotFoundError) {
-        return new Response(
-          JSON.stringify({ error: "Parent account not found" }),
-          { status: 404, headers: { "Content-Type": "application/json" } }
-        );
+        // Try with admin client (bypasses RLS in case anon can't read parents)
+        const adminId = await parentService.findParentByEmailWithAdmin(query.email);
+        if (adminId) {
+          parentId = adminId;
+        } else {
+          // Backfill from auth.users if parent exists there but not in public.parents
+          const backfilledId = await parentService.ensureParentFromAuthByEmail(query.email);
+          if (backfilledId) {
+            parentId = backfilledId;
+          } else {
+            return new Response(
+              JSON.stringify({ error: "Parent account not found" }),
+              { status: 404, headers: { "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } else {
+        throw err;
       }
-      throw err;
     }
 
-    const households = await householdService.getHouseholdsForParent(parentId);
+    let households = await householdService.getHouseholdsForParent(parentId);
+    if (households.length === 0) {
+      // Ensure default household exists (e.g. parent was created before household backfill)
+      await parentService.ensureParentFromAuthByEmail(query.email);
+      households = await householdService.getHouseholdsForParent(parentId);
+    }
     if (households.length === 0) {
       return new Response(
         JSON.stringify({ error: "No household found for this account" }),

@@ -14,12 +14,14 @@ export default function LinkDevicePage() {
   const [households, setHouseholds] = useState<HouseholdOption[]>([]);
   const [parentId, setParentId] = useState<string | null>(null);
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
+  const [noHouseholdRedirect, setNoHouseholdRedirect] = useState(false);
   const router = useRouter();
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setNoHouseholdRedirect(false);
     setSuccess(false);
 
     try {
@@ -30,18 +32,31 @@ export default function LinkDevicePage() {
 
       if (!lookupResponse.ok) {
         if (lookupResponse.status === 404) {
-          setError(
-            "No account found with this email. Please check the email address or ask your parent to create an account."
-          );
+          const msg = lookupData.error;
+          if (msg === "No household found for this account") {
+            setError(
+              "This account isn’t set up yet. Sign in to the admin to finish setup, then try linking again."
+            );
+            setNoHouseholdRedirect(true);
+            setTimeout(() => router.push("/admin"), 2500);
+          } else {
+            setNoHouseholdRedirect(false);
+            setError(
+              "No account found with this email. Please check the email address or ask your parent to create an account."
+            );
+          }
         } else if (lookupResponse.status === 429) {
+          setNoHouseholdRedirect(false);
           setError(
             "Too many requests. Please wait a moment and try again."
           );
         } else if (lookupResponse.status === 400) {
+          setNoHouseholdRedirect(false);
           setError(
             "Please enter a valid email address."
           );
         } else {
+          setNoHouseholdRedirect(false);
           setError(lookupData.error || "Failed to find parent account. Please try again.");
         }
         return;
@@ -174,9 +189,20 @@ export default function LinkDevicePage() {
                       />
                     </svg>
                   </div>
-                  <div className="ml-3">
+                  <div className="ml-3 flex-1">
                     <h3 className="text-sm font-medium text-red-800">Error</h3>
                     <p className="mt-1 text-sm text-red-700">{error}</p>
+                    {noHouseholdRedirect && (
+                      <p className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => router.push("/admin")}
+                          className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+                        >
+                          Sign in to admin to finish setup
+                        </button>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -190,6 +216,7 @@ export default function LinkDevicePage() {
                       className="h-5 w-5 text-green-400"
                       viewBox="0 0 20 20"
                       fill="currentColor"
+                      aria-hidden="true"
                     >
                       <path
                         fillRule="evenodd"

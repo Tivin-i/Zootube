@@ -7,15 +7,18 @@ import dynamic from "next/dynamic";
 import { Video } from "@/types/database";
 import KidsHeader from "@/components/KidsHeader";
 import { useHouseholdId } from "@/lib/hooks/useHouseholdId";
+import { useChildrenByDevice } from "@/lib/hooks/useChildrenByDevice";
 import { formatDuration } from "@/lib/utils/duration";
-import { DEFAULT_CHILD_NAME } from "@/lib/utils/constants";
+import {
+  SELECTED_CHILD_ID_KEY,
+  SELECTED_CHILD_NAME_KEY,
+} from "@/lib/utils/constants";
 import { createClient } from "@/lib/supabase/client";
 
 // Lazy load VideoModal to reduce initial bundle size
-// Only load when a video is selected
 const VideoModal = dynamic(() => import("@/components/VideoModal"), {
-  loading: () => null, // No loading state needed as modal opens after selection
-  ssr: false, // VideoModal is client-side only
+  loading: () => null,
+  ssr: false,
 });
 
 export default function FeedPage() {
@@ -24,9 +27,27 @@ export default function FeedPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const router = useRouter();
   const { householdId, loading: householdIdLoading, refetch } = useHouseholdId();
+  const { children: linkedChildren, loading: childrenLoading } = useChildrenByDevice();
   const sessionLinkAttemptedRef = useRef(false);
+
+  // Sync selected child from localStorage when linked children load; validate against list
+  useEffect(() => {
+    if (linkedChildren.length === 0) return;
+    if (typeof window === "undefined") return;
+    const storedId = localStorage.getItem(SELECTED_CHILD_ID_KEY);
+    const valid = storedId && linkedChildren.some((c) => c.id === storedId);
+    if (valid) {
+      setSelectedChildId(storedId);
+    } else {
+      const first = linkedChildren[0];
+      setSelectedChildId(first.id);
+      localStorage.setItem(SELECTED_CHILD_ID_KEY, first.id);
+      localStorage.setItem(SELECTED_CHILD_NAME_KEY, first.display_name || first.email || "");
+    }
+  }, [linkedChildren]);
 
   useEffect(() => {
     if (householdId) {
@@ -105,6 +126,67 @@ export default function FeedPage() {
     setSelectedVideo(null);
   };
 
+  const handleSelectChild = (childId: string) => {
+    const c = linkedChildren.find((x) => x.id === childId);
+    if (c) {
+      setSelectedChildId(childId);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SELECTED_CHILD_ID_KEY, childId);
+        localStorage.setItem(SELECTED_CHILD_NAME_KEY, c.display_name || c.email || "");
+      }
+    }
+  };
+
+  const selectedChild = selectedChildId
+    ? linkedChildren.find((c) => c.id === selectedChildId)
+    : linkedChildren[0];
+  const childDisplayName =
+    selectedChild?.display_name || selectedChild?.email || "Me";
+
+  // Waiting for device link or session link
+  if (householdIdLoading || !householdId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
+        <div className="text-center" data-testid="loading-state">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-amber-700 border-t-transparent" data-testid="loading-spinner" aria-hidden="true" />
+          <p className="text-lg font-medium text-amber-900" aria-live="polite">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Device linked but still loading children list
+  if (childrenLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
+        <div className="text-center" data-testid="loading-state">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-amber-700 border-t-transparent" data-testid="loading-spinner" aria-hidden="true" />
+          <p className="text-lg font-medium text-amber-900" aria-live="polite">Loading profiles…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No linked children: parent must add child profiles in admin
+  if (linkedChildren.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
+        <div className="mx-auto max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
+          <h2 className="font-chewy text-2xl text-gray-900">No profiles yet</h2>
+          <p className="mt-3 text-gray-600">
+            Your parent needs to add you in the admin first. They can sign in and link your Google account there.
+          </p>
+          <a
+            href="/admin"
+            className="mt-6 inline-block rounded-xl bg-amber-600 px-6 py-3 font-medium text-white hover:bg-amber-500 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          >
+            Go to admin
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
@@ -118,7 +200,13 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundImage: "url(/Giraffe1.png)", backgroundSize: "auto" }}>
-      <KidsHeader showUserMenu={true} childName={DEFAULT_CHILD_NAME} />
+      <KidsHeader
+        showUserMenu={true}
+        childName={childDisplayName}
+        children={linkedChildren}
+        selectedChildId={selectedChildId}
+        onSelectChild={handleSelectChild}
+      />
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -136,6 +224,7 @@ export default function FeedPage() {
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"

@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Video } from "@/types/database";
 import VideoAddForm from "@/components/admin/VideoAddForm";
 import AnalyticsSection from "@/components/admin/AnalyticsSection";
@@ -44,7 +44,8 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const [youtubeToast, setYoutubeToast] = useState<"connected" | "error" | null>(null);
   const [childToast, setChildToast] = useState<"connected" | "error" | null>(null);
   const [householdsError, setHouseholdsError] = useState<string | null>(null);
-  const [creatingHousehold, setCreatingHousehold] = useState(false);
+  const [ensuringHousehold, setEnsuringHousehold] = useState(false);
+  const ensuredHouseholdOnce = useRef(false);
   const searchParams = useSearchParams();
 
   // Use first household when list has items but none selected yet (ensures OAuth + Add Video show)
@@ -220,17 +221,16 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     router.refresh();
   };
 
-  const handleCreateHousehold = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const name = (form.elements.namedItem("household-name") as HTMLInputElement)?.value?.trim() || "My list";
-    setCreatingHousehold(true);
+  const ensureOneHousehold = useCallback(async () => {
+    if (ensuredHouseholdOnce.current) return;
+    ensuredHouseholdOnce.current = true;
+    setEnsuringHousehold(true);
     setHouseholdsError(null);
     try {
       const res = await fetch("/api/households", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: "My list" }),
         credentials: "include",
       });
       const data = await res.json();
@@ -238,15 +238,29 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         await fetchHouseholds();
         setSelectedHouseholdId(data.household.id);
       } else {
-        setHouseholdsError(data.error ?? "Failed to create household");
+        setHouseholdsError(data.error ?? "Couldn’t set up your household.");
+        ensuredHouseholdOnce.current = false;
       }
     } catch (err) {
-      console.error("Create household error:", err);
-      setHouseholdsError("Failed to create household. Please try again.");
+      console.error("Ensure household error:", err);
+      setHouseholdsError("Couldn’t set up your household. Please try again.");
+      ensuredHouseholdOnce.current = false;
     } finally {
-      setCreatingHousehold(false);
+      setEnsuringHousehold(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !loadingHouseholds &&
+      !householdsError &&
+      households.length === 0 &&
+      !ensuringHousehold &&
+      !ensuredHouseholdOnce.current
+    ) {
+      ensureOneHousehold();
+    }
+  }, [loadingHouseholds, householdsError, households.length, ensuringHousehold, ensureOneHousehold]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -341,31 +355,26 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           )}
           {!loadingHouseholds && !householdsError && households.length === 0 && (
             <div className="rounded-lg border border-gray-200 bg-white p-6 shadow">
-              <h2 className="text-lg font-semibold text-gray-900">No household yet</h2>
-              <p className="mt-1 text-sm text-gray-600">
-                Create a household to manage videos and connect child accounts.
-              </p>
-              <form onSubmit={handleCreateHousehold} className="mt-4 flex flex-wrap items-center gap-3">
-                <label htmlFor="household-name" className="sr-only">
-                  Household name
-                </label>
-                <input
-                  id="household-name"
-                  name="household-name"
-                  type="text"
-                  defaultValue="My list"
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="Household name"
-                  disabled={creatingHousehold}
-                />
-                <button
-                  type="submit"
-                  disabled={creatingHousehold}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {creatingHousehold ? "Creating…" : "Create household"}
-                </button>
-              </form>
+              {ensuringHousehold ? (
+                <>
+                  <h2 className="text-lg font-semibold text-gray-900">Setting up your household</h2>
+                  <p className="mt-1 text-sm text-gray-600">Please wait…</p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold text-gray-900">Household not set up</h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    We couldn’t set up your household automatically. You can retry or sign in again later.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => ensureOneHousehold()}
+                    className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+                  >
+                    Retry
+                  </button>
+                </>
+              )}
             </div>
           )}
 

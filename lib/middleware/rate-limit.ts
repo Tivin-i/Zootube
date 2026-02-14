@@ -84,13 +84,14 @@ const rateLimiters = {
 };
 
 /**
- * Get client identifier from request (IP address)
+ * Get client identifier from request (IP address).
+ * In production the app must run behind a trusted proxy that sets x-forwarded-for or x-real-ip;
+ * otherwise these headers can be spoofed by the client.
  */
 function getClientIdentifier(request: NextRequest): string {
-  // Try to get IP from various headers (for proxies/load balancers)
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
-  const ip = forwarded?.split(",")[0] || realIp || "unknown";
+  const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
   return ip;
 }
 
