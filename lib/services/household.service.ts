@@ -1,7 +1,8 @@
 import { householdRepository } from "@/lib/repositories/household.repository";
+import type { HouseholdMemberWithEmail } from "@/lib/repositories/household.repository";
 import { parentRepository } from "@/lib/repositories/parent.repository";
 import { Household } from "@/types/database";
-import { NotFoundError, ServiceUnavailableError } from "@/lib/errors/app-errors";
+import { ForbiddenError, NotFoundError, ServiceUnavailableError, ValidationError } from "@/lib/errors/app-errors";
 import { getAdminClientOrNull } from "@/lib/supabase/admin";
 
 export class HouseholdService {
@@ -55,9 +56,19 @@ export class HouseholdService {
   async inviteMember(householdId: string, inviterParentId: string, email: string): Promise<void> {
     await this.ensureMember(householdId, inviterParentId);
 
+    const role = await householdRepository.findMemberRole(householdId, inviterParentId);
+    if (role !== "owner") {
+      throw new ForbiddenError("Only the household owner can invite guardians");
+    }
+
     const parent = await parentRepository.findByEmail(email);
     if (!parent) {
       throw new NotFoundError("Parent account with that email");
+    }
+
+    const alreadyMember = await householdRepository.isMember(householdId, parent.id);
+    if (alreadyMember) {
+      throw new ValidationError("That person is already in this household");
     }
 
     await householdRepository.addMember({
@@ -65,6 +76,11 @@ export class HouseholdService {
       parent_id: parent.id,
       role: "member",
     });
+  }
+
+  async getMembersWithEmails(householdId: string, parentId: string): Promise<HouseholdMemberWithEmail[]> {
+    await this.ensureMember(householdId, parentId);
+    return householdRepository.findMembersWithEmailByHouseholdId(householdId);
   }
 
   async removeMember(householdId: string, removerParentId: string, targetParentId: string): Promise<void> {

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Household create and share:** Parents can create a household (video list) and share it with another parent. (1) **Create:** Admin dashboard has a "New list" button; when clicked, an inline form lets the parent create another household with a custom name. (2) **Share:** A "Guardians" block on the admin dashboard lists household members (email, role, joined date) and, for the household owner, an "Invite another guardian by email" form that calls `POST /api/households/[id]/members`. Only the household owner can invite; the invited parent must already have an account (same email as in auth). (3) **API:** `GET /api/households/[id]/members` returns members with emails (auth and household membership required). Invite endpoint now enforces owner-only and returns a clear error if the email is already a member.
+
 - **README: Custom domain (voobi.app):** Documented why the Worker may work on workers.dev but not on https://voobi.app: the domain must be added to Cloudflare and the Custom Domain attached in Workers & Pages → voobi → Settings → Domains & Routes. Steps and link to Cloudflare Custom Domains docs added.
 
 ### Changed

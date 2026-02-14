@@ -10,6 +10,7 @@ import AnalyticsSection from "@/components/admin/AnalyticsSection";
 import VideoListSection from "@/components/admin/VideoListSection";
 import YouTubeConnectionBlock from "@/components/admin/YouTubeConnectionBlock";
 import LinkedChildrenBlock from "@/components/admin/LinkedChildrenBlock";
+import HouseholdGuardiansBlock from "@/components/admin/HouseholdGuardiansBlock";
 import { useYoutubeConnection } from "@/lib/hooks/useYoutubeConnection";
 import { useLinkedChildren } from "@/lib/hooks/useLinkedChildren";
 
@@ -46,6 +47,10 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const [householdsError, setHouseholdsError] = useState<string | null>(null);
   const [ensuringHousehold, setEnsuringHousehold] = useState(false);
   const ensuredHouseholdOnce = useRef(false);
+  const [createHouseholdName, setCreateHouseholdName] = useState("");
+  const [creatingHousehold, setCreatingHousehold] = useState(false);
+  const [createHouseholdError, setCreateHouseholdError] = useState<string | null>(null);
+  const [showCreateHouseholdForm, setShowCreateHouseholdForm] = useState(false);
   const searchParams = useSearchParams();
 
   // Use first household when list has items but none selected yet (ensures OAuth + Add Video show)
@@ -175,6 +180,36 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     if (selectedHouseholdId) fetchVideos();
   }, [selectedHouseholdId, fetchVideos]);
 
+  const handleCreateHousehold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = createHouseholdName.trim();
+    if (!name) return;
+    setCreatingHousehold(true);
+    setCreateHouseholdError(null);
+    try {
+      const res = await fetch("/api/households", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (res.ok && data.household) {
+        setCreateHouseholdName("");
+        setShowCreateHouseholdForm(false);
+        await fetchHouseholds();
+        setSelectedHouseholdId(data.household.id);
+      } else {
+        setCreateHouseholdError(data.error ?? "Failed to create list");
+      }
+    } catch (err) {
+      console.error("Create household error:", err);
+      setCreateHouseholdError("Failed to create list. Please try again.");
+    } finally {
+      setCreatingHousehold(false);
+    }
+  };
+
   const handleBulkDelete = async (videosToDelete: Video[]) => {
     const count = videosToDelete.length;
     if (
@@ -274,23 +309,36 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
               </h1>
               <p className="mt-1 text-sm text-gray-500">{user.email}</p>
             </div>
-            {households.length > 1 && (
-              <div className="flex items-center gap-2">
-                <label htmlFor="household-select" className="text-sm font-medium text-gray-700">
-                  Video list:
-                </label>
-                <select
-                  id="household-select"
-                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-600"
-                  value={selectedHouseholdId ?? ""}
-                  onChange={(e) => setSelectedHouseholdId(e.target.value)}
-                >
-                  {households.map((h) => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {households.length > 1 && (
+                <>
+                  <label htmlFor="household-select" className="text-sm font-medium text-gray-700">
+                    Video list:
+                  </label>
+                  <select
+                    id="household-select"
+                    className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-600"
+                    value={selectedHouseholdId ?? ""}
+                    onChange={(e) => setSelectedHouseholdId(e.target.value)}
+                  >
+                    {households.map((h) => (
+                      <option key={h.id} value={h.id}>{h.name}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateHouseholdForm((v) => !v);
+                  setCreateHouseholdError(null);
+                  if (!showCreateHouseholdForm) setCreateHouseholdName("");
+                }}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                {showCreateHouseholdForm ? "Cancel" : "New list"}
+              </button>
+            </div>
             <button
               onClick={handleLogout}
               className="rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
@@ -305,6 +353,46 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="space-y-6">
+          {/* Create new household form */}
+          {showCreateHouseholdForm && (
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900">Create a new video list</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Create another list and optionally share it with another guardian.
+              </p>
+              <form onSubmit={handleCreateHousehold} className="mt-4 flex flex-wrap items-end gap-2">
+                <div>
+                  <label htmlFor="new-household-name" className="sr-only">
+                    List name
+                  </label>
+                  <input
+                    id="new-household-name"
+                    type="text"
+                    value={createHouseholdName}
+                    onChange={(e) => {
+                      setCreateHouseholdName(e.target.value);
+                      setCreateHouseholdError(null);
+                    }}
+                    placeholder="e.g. Weekend list"
+                    disabled={creatingHousehold}
+                    maxLength={100}
+                    className="min-w-[200px] rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 disabled:opacity-50"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={creatingHousehold || !createHouseholdName.trim()}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
+                >
+                  {creatingHousehold ? "Creating…" : "Create list"}
+                </button>
+              </form>
+              {createHouseholdError && (
+                <p className="mt-2 text-sm text-red-600">{createHouseholdError}</p>
+              )}
+            </div>
+          )}
+
           {/* Safety Notice */}
           <div className="rounded-lg border-l-4 border-yellow-400 bg-yellow-50 p-4">
             <div className="flex">
@@ -376,6 +464,14 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                 </>
               )}
             </div>
+          )}
+
+          {/* Guardians section — show when we have at least one household */}
+          {effectiveHouseholdId && (
+            <HouseholdGuardiansBlock
+              householdId={effectiveHouseholdId}
+              currentUserId={user.id}
+            />
           )}
 
           {/* Child accounts section — show when we have at least one household */}

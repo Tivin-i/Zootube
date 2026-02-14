@@ -6,10 +6,16 @@ import { Database } from "@/types/database";
 type HouseholdInsert = Database["public"]["Tables"]["households"]["Insert"];
 type HouseholdMemberInsert = Database["public"]["Tables"]["household_members"]["Insert"];
 
+export interface HouseholdMemberWithEmail extends HouseholdMember {
+  email: string | null;
+}
+
 export interface HouseholdRepository {
   create(data: HouseholdInsert): Promise<Household>;
   findById(id: string): Promise<Household | null>;
   findMembersByHouseholdId(householdId: string): Promise<HouseholdMember[]>;
+  findMembersWithEmailByHouseholdId(householdId: string): Promise<HouseholdMemberWithEmail[]>;
+  findMemberRole(householdId: string, parentId: string): Promise<"owner" | "member" | null>;
   findHouseholdsByParentId(parentId: string): Promise<Household[]>;
   addMember(data: HouseholdMemberInsert): Promise<void>;
   removeMember(householdId: string, parentId: string): Promise<void>;
@@ -60,6 +66,53 @@ export class SupabaseHouseholdRepository implements HouseholdRepository {
       throw new Error(`Failed to fetch household members: ${error.message}`);
     }
     return data || [];
+  }
+
+  async findMembersWithEmailByHouseholdId(householdId: string): Promise<HouseholdMemberWithEmail[]> {
+    const supabase = await createClient();
+    const { data: members, error: membersError } = await supabase
+      .from("household_members")
+      .select("household_id, parent_id, role, joined_at")
+      .eq("household_id", householdId)
+      .order("joined_at", { ascending: true });
+
+    if (membersError) {
+      throw new Error(`Failed to fetch household members: ${membersError.message}`);
+    }
+    const list = members || [];
+    if (list.length === 0) return [];
+
+    const parentIds = [...new Set(list.map((m) => m.parent_id))];
+    const { data: parents, error: parentsError } = await supabase
+      .from("parents")
+      .select("id, email")
+      .in("id", parentIds);
+
+    if (parentsError) {
+      throw new Error(`Failed to fetch parent emails: ${parentsError.message}`);
+    }
+    const emailByParentId = new Map((parents || []).map((p) => [p.id, p.email]));
+
+    return list.map((m) => ({
+      ...m,
+      email: emailByParentId.get(m.parent_id) ?? null,
+    }));
+  }
+
+  async findMemberRole(householdId: string, parentId: string): Promise<"owner" | "member" | null> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("household_members")
+      .select("role")
+      .eq("household_id", householdId)
+      .eq("parent_id", parentId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch member role: ${error.message}`);
+    }
+    if (!data || (data.role !== "owner" && data.role !== "member")) return null;
+    return data.role as "owner" | "member";
   }
 
   async findHouseholdsByParentId(parentId: string): Promise<Household[]> {

@@ -8,6 +8,49 @@ import { householdIdSchema } from "@/lib/validators/household.validator";
 import { inviteMemberSchema } from "@/lib/validators/household.validator";
 
 /**
+ * GET /api/households/[id]/members - List household members with emails (auth + membership required)
+ */
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    await applyRateLimit(_request, "auth");
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new UnauthorizedError("Authentication required");
+    }
+
+    const params = await context.params;
+    const householdId = householdIdSchema.parse(params.id);
+
+    const members = await householdService.getMembersWithEmails(householdId, user.id);
+
+    return new Response(
+      JSON.stringify({
+        members: members.map((m) => ({
+          parent_id: m.parent_id,
+          email: m.email,
+          role: m.role,
+          joined_at: m.joined_at,
+        })),
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+/**
  * POST /api/households/[id]/members - Invite a guardian by email (auth required, must be owner)
  * Body: { email: string }
  */
