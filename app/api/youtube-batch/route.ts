@@ -305,6 +305,17 @@ export async function POST(request: NextRequest) {
 
     return handleApiError(new Error("Unsupported URL type"));
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("YouTube API 403") || message.includes("Access forbidden")) {
+      return NextResponse.json(
+        {
+          error:
+            "YouTube denied access for this account. Ensure YouTube Data API v3 is enabled in your Google Cloud project (same project as the OAuth client). If your OAuth app is in Testing mode, add the connected Google account as a test user. You can also try disconnecting and reconnecting the YouTube account for this list.",
+          code: "YOUTUBE_ACCESS_FORBIDDEN",
+        },
+        { status: 502 }
+      );
+    }
     return handleApiError(error);
   }
 }

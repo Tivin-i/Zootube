@@ -136,6 +136,8 @@ create trigger on_auth_user_created
 
 Adding videos or channels to the whitelist (dashboard "Add YouTube Videos") uses the **household's connected YouTube account** (OAuth). No separate YouTube API key is required. Parents connect a child's YouTube account per household; that account is then used to fetch video/channel/playlist metadata.
 
+**Use the same Google Cloud project** for both enabling YouTube Data API v3 (§3.2) and creating the OAuth client below. If your OAuth consent screen is in **Testing** mode, add the Google account used for "Connect YouTube" as a **Test user** (APIs & Services > OAuth consent screen > Test users).
+
 1. Go to **APIs & Services** > **Credentials**
 2. Click **Create Credentials** > **OAuth client ID**
 3. If prompted, configure the **OAuth consent screen** (User type: External; add scopes if required)
@@ -207,6 +209,11 @@ Tests use mocks for APIs where possible; some flows (e.g. full device linking wi
 ### "Connect the child's YouTube account for this list before adding videos"
 - Ensure the household has connected a YouTube account (admin dashboard: select the list, then connect the child's YouTube account).
 - OAuth env vars must be set: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `YOUTUBE_OAUTH_ENCRYPTION_KEY`.
+
+### "YouTube denied access" / "Access forbidden" when adding videos
+- **YouTube Data API v3** must be **enabled** in the **same** Google Cloud project that owns your OAuth client (APIs & Services > Library > YouTube Data API v3 > Enable).
+- If the **OAuth consent screen** is in **Testing** mode: add the Google account used for "Connect YouTube" as a **Test user** (APIs & Services > OAuth consent screen > Test users). Otherwise YouTube returns 403.
+- Try **disconnecting and reconnecting** the YouTube account for that list (Connect YouTube again with the same or a different account).
 
 ### "Failed to fetch" or CORS errors
 - Verify Supabase URL and keys in `.env.local`
