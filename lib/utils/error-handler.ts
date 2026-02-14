@@ -54,6 +54,14 @@ export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
     return NextResponse.json(response, { status: error.statusCode });
   }
 
+  // Configuration errors (missing env, etc.): surface message so deployers can fix without logs
+  if (error instanceof Error && isConfigurationError(error.message)) {
+    return NextResponse.json(
+      { error: error.message, code: "CONFIGURATION_ERROR" },
+      { status: 503 }
+    );
+  }
+
   // Handle unknown errors
   // In production, don't expose internal error details
   const isDevelopment = process.env.NODE_ENV === "development";
@@ -67,5 +75,14 @@ export function handleApiError(error: unknown): NextResponse<ErrorResponse> {
       code: "INTERNAL_ERROR",
     },
     { status: 500 }
+  );
+}
+
+/** Errors about missing or invalid env/config we can safely surface to the client */
+function isConfigurationError(message: string): boolean {
+  return (
+    /must be set|required for|is not set|not configured|credentials not configured/i.test(message) ||
+    message.includes("YOUTUBE_OAUTH_ENCRYPTION_KEY") ||
+    message.includes("GOOGLE_CLIENT")
   );
 }

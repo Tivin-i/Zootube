@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **500 on `/api/auth/youtube`:** Configuration errors (e.g. missing `YOUTUBE_OAUTH_ENCRYPTION_KEY` or Google OAuth env) are now returned as 503 with the actual error message and code `CONFIGURATION_ERROR`, so deployers can see what to fix without checking server logs. Other internal errors remain 500 with a generic message.
+
+- **Permissions-Policy:** Set a minimal `Permissions-Policy` in `next.config.ts` (camera, microphone, geolocation disabled) to avoid sending unrecognized directives like `browsing-topics` that trigger console warnings.
+
 - **"YOUTUBE_OAUTH_ENCRYPTION_KEY required for state signing" on Cloudflare:** The key is read at runtime, not build time. (1) Added `nodejs_compat_populate_process_env` to `wrangler.jsonc` so Worker env vars and Secrets are available on `process.env`. (2) Clearer error messages in `youtube-oauth.service.ts` and `child-oauth.service.ts` that point to setting the var at runtime (Cloudflare dashboard or `.dev.vars`). (3) Docs: `docs/setup.md` troubleshooting and Step 3.4, README Cloudflare section, and `.dev.vars.example` now state that OAuth env vars must be set as **runtime** variables (Worker Settings → Variables and Secrets, or `.dev.vars` for local preview).
 
 - **POST /api/youtube-batch:** When Supabase is unreachable (e.g. DNS `EAI_AGAIN`), the route now returns 503 "Authentication service temporarily unavailable" instead of 401, so clients can retry instead of treating it as "not logged in".

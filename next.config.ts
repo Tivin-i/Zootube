@@ -18,6 +18,20 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 });
 
 const nextConfig: NextConfig = {
+  // Override Permissions-Policy so we don't send unrecognized directives (e.g. browsing-topics)
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
   // Explicitly enable turbopack (silences the warning)
   turbopack: {},
   // Standalone output for Docker; omit when building for Cloudflare (OpenNext)
