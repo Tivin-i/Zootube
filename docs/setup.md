@@ -140,7 +140,7 @@ Adding videos or channels to the whitelist (dashboard "Add YouTube Videos") uses
 
 1. Go to **APIs & Services** > **Credentials**
 2. Click **Create Credentials** > **OAuth client ID**
-3. If prompted, configure the **OAuth consent screen** (User type: External; add scopes if required)
+3. Configure the **OAuth consent screen** (User type: External). Under **Scopes**, click **Add or remove scopes** and add **YouTube Data API v3** (or the scope `https://www.googleapis.com/auth/youtube.readonly`). Without this scope, tokens will not have access to the YouTube API and you will get 403.
 4. Application type: **Web application**
 5. Add **Authorized redirect URIs** (must match exactly; no trailing slash):
    - Production: `https://voobi.app/api/auth/youtube/callback` and `https://voobi.app/api/auth/child/callback`
@@ -212,8 +212,10 @@ Tests use mocks for APIs where possible; some flows (e.g. full device linking wi
 
 ### "YouTube denied access" / "Access forbidden" when adding videos
 - **YouTube Data API v3** must be **enabled** in the **same** Google Cloud project that owns your OAuth client (APIs & Services > Library > YouTube Data API v3 > Enable).
-- If the **OAuth consent screen** is in **Testing** mode: add the Google account used for "Connect YouTube" as a **Test user** (APIs & Services > OAuth consent screen > Test users). Otherwise YouTube returns 403.
-- Try **disconnecting and reconnecting** the YouTube account for that list (Connect YouTube again with the same or a different account).
+- **OAuth consent screen must include the YouTube scope**: Go to **APIs & Services > OAuth consent screen > Edit app > Scopes**. Add **YouTube Data API v3** (or `https://www.googleapis.com/auth/youtube.readonly`). If this scope is not configured, the issued token will not have API access and YouTube returns 403.
+- If the consent screen is in **Testing** mode: add the Google account used for "Connect YouTube" as a **Test user**.
+- **Disconnect and reconnect** the YouTube account for that list (admin: Disconnect, then Connect YouTube again). This issues a new refresh token with the current scopes; an old token may have been created before the scope was added.
+- If it still fails, try connecting with a **different Google account** (some brand or managed accounts have restrictions).
 
 ### "Failed to fetch" or CORS errors
 - Verify Supabase URL and keys in `.env.local`
