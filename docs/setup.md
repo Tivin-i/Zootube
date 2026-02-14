@@ -153,7 +153,7 @@ To let parents link a YouTube account per household (e.g. for future playlist im
 5. Add **Authorized redirect URI**: `https://your-domain.com/api/auth/youtube/callback`  
    For local dev: `http://localhost:3000/api/auth/youtube/callback`
 6. Create and copy the **Client ID** and **Client secret**
-7. In your app env (Step 4), set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, and `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example`)
+7. In your app env (Step 4), set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, and `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example`). **Cloudflare:** these are read at **runtime**; set them in the Worker’s Environment variables or Secrets in the Cloudflare dashboard (and in `.dev.vars` for local `npm run preview`), not only as build variables.
 
 The `youtube_connections` table is created by `migrations/001_schema.sql`; no separate migration is needed.
 
@@ -230,6 +230,9 @@ Tests use mocks for APIs where possible; some flows (e.g. full device linking wi
 - Check that email provider is enabled in Supabase
 - Verify middleware.ts is running (check console logs)
 - Clear browser cookies and try again
+
+### "YOUTUBE_OAUTH_ENCRYPTION_KEY required for state signing"
+- The key is read at **runtime**, not at build time. If you use **Cloudflare Workers**: set `YOUTUBE_OAUTH_ENCRYPTION_KEY` (and `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`) in the Worker’s **Settings → Variables and Secrets** in the Cloudflare dashboard. For local Workers preview (`npm run preview`), set them in `.dev.vars`. The project uses `nodejs_compat_populate_process_env` so Worker env vars are available on `process.env`.
 
 ### Database errors
 - Verify all SQL migrations ran successfully

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Billing (Phase 1 — database):** Subscription table and types for household billing. Migration `migrations/002_subscriptions.sql` adds `public.subscriptions` (one per household): `household_id`, `billing_parent_id`, `provider` (stripe/paypal), `provider_subscription_id`, `provider_customer_id`, `status`, `trial_start`, `trial_end`, `current_period_start`, `current_period_end`, `cancel_at_period_end`, timestamps. RLS: household members can SELECT; INSERT/UPDATE/DELETE via service role (webhooks). `types/database.ts` extended with `subscriptions` table and `Subscription` type.
+
 - **Household create and share:** Parents can create a household (video list) and share it with another parent. (1) **Create:** Admin dashboard has a "New list" button; when clicked, an inline form lets the parent create another household with a custom name. (2) **Share:** A "Guardians" block on the admin dashboard lists household members (email, role, joined date) and, for the household owner, an "Invite another guardian by email" form that calls `POST /api/households/[id]/members`. Only the household owner can invite; the invited parent must already have an account (same email as in auth). (3) **API:** `GET /api/households/[id]/members` returns members with emails (auth and household membership required). Invite endpoint now enforces owner-only and returns a clear error if the email is already a member.
 
 - **README: Custom domain (voobi.app):** Documented why the Worker may work on workers.dev but not on https://voobi.app: the domain must be added to Cloudflare and the Custom Domain attached in Workers & Pages → voobi → Settings → Domains & Routes. Steps and link to Cloudflare Custom Domains docs added.
@@ -20,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rate limiting:** Use separate limiters per type (public / auth / videoAdd) so 429s happen less often. When Upstash Redis is configured, auth endpoints (e.g. `/api/children`, `/api/youtube-connection`, `/api/households`) now get 60 requests per 15 minutes per IP instead of sharing a single 10/15m bucket. Public stays 100/15m; videoAdd 20/60m. In-memory limiters (no Redis) now use the same auth limit (60/15m) for consistency.
 
 ### Fixed
+
+- **"YOUTUBE_OAUTH_ENCRYPTION_KEY required for state signing" on Cloudflare:** The key is read at runtime, not build time. (1) Added `nodejs_compat_populate_process_env` to `wrangler.jsonc` so Worker env vars and Secrets are available on `process.env`. (2) Clearer error messages in `youtube-oauth.service.ts` and `child-oauth.service.ts` that point to setting the var at runtime (Cloudflare dashboard or `.dev.vars`). (3) Docs: `docs/setup.md` troubleshooting and Step 3.4, README Cloudflare section, and `.dev.vars.example` now state that OAuth env vars must be set as **runtime** variables (Worker Settings → Variables and Secrets, or `.dev.vars` for local preview).
 
 - **POST /api/youtube-batch:** When Supabase is unreachable (e.g. DNS `EAI_AGAIN`), the route now returns 503 "Authentication service temporarily unavailable" instead of 401, so clients can retry instead of treating it as "not logged in".
 

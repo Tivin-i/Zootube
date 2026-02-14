@@ -4,7 +4,8 @@
 
 NEXTJS_ENV=development
 
-# Optional: add Supabase, Upstash, Google OAuth vars here for local preview.
+# Optional: add Supabase, Upstash, Google OAuth vars here for local Workers preview (npm run preview).
+# These are runtime vars; without them, YouTube/child OAuth will fail with "YOUTUBE_OAUTH_ENCRYPTION_KEY required for state signing".
 # NEXT_PUBLIC_SUPABASE_URL=
 # NEXT_PUBLIC_SUPABASE_ANON_KEY=
 # SUPABASE_SERVICE_ROLE_KEY=
@@ -12,6 +13,6 @@ NEXTJS_ENV=development
 # UPSTASH_REDIS_REST_TOKEN=
 # GOOGLE_CLIENT_ID=
 # GOOGLE_CLIENT_SECRET=
-# YOUTUBE_OAUTH_ENCRYPTION_KEY=
+# YOUTUBE_OAUTH_ENCRYPTION_KEY=your-32-char-or-longer-secret
 # YOUTUBE_API_KEY=
 # APP_URL=http://localhost:8787

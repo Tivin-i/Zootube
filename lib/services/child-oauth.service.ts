@@ -19,9 +19,12 @@ export interface ChildOAuthStatePayload {
   exp?: number;
 }
 
+const ENCRYPTION_KEY_HINT =
+  " Set YOUTUBE_OAUTH_ENCRYPTION_KEY at runtime (e.g. Cloudflare Worker env vars / Secrets, or .dev.vars for local preview).";
+
 function getSigningKey(): Buffer {
   const key = process.env.YOUTUBE_OAUTH_ENCRYPTION_KEY;
-  if (!key) throw new Error("YOUTUBE_OAUTH_ENCRYPTION_KEY required for child OAuth state signing");
+  if (!key) throw new Error("YOUTUBE_OAUTH_ENCRYPTION_KEY required for child OAuth state signing." + ENCRYPTION_KEY_HINT);
   return Buffer.from(key.slice(0, 32), "utf8");
 }
 

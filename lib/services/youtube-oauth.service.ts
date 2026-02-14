@@ -16,10 +16,16 @@ export interface OAuthStatePayload {
   exp?: number;
 }
 
+const ENCRYPTION_KEY_HINT =
+  " Set YOUTUBE_OAUTH_ENCRYPTION_KEY at runtime (e.g. Cloudflare Worker env vars / Secrets, or .dev.vars for local preview).";
+
 function getEncryptionKey(): Buffer {
   const raw = process.env.YOUTUBE_OAUTH_ENCRYPTION_KEY;
   if (!raw || raw.length < 32) {
-    throw new Error("YOUTUBE_OAUTH_ENCRYPTION_KEY must be set and at least 32 characters (or 64 hex chars for 32 bytes)");
+    throw new Error(
+      "YOUTUBE_OAUTH_ENCRYPTION_KEY must be set and at least 32 characters (or 64 hex chars for 32 bytes)." +
+        (!raw ? ENCRYPTION_KEY_HINT : "")
+    );
   }
   if (raw.length === 64 && /^[0-9a-fA-F]+$/.test(raw)) {
     return Buffer.from(raw, "hex");
@@ -29,7 +35,7 @@ function getEncryptionKey(): Buffer {
 
 function getSigningKey(): Buffer {
   const key = process.env.YOUTUBE_OAUTH_ENCRYPTION_KEY;
-  if (!key) throw new Error("YOUTUBE_OAUTH_ENCRYPTION_KEY required for state signing");
+  if (!key) throw new Error("YOUTUBE_OAUTH_ENCRYPTION_KEY required for state signing." + ENCRYPTION_KEY_HINT);
   return Buffer.from(key.slice(0, 32), "utf8");
 }
 
