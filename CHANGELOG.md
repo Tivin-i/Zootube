@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **YouTube whitelist: OAuth only, no API key.** Adding videos or channels to the whitelist now uses only the **household's connected YouTube account** (OAuth). `YOUTUBE_API_KEY` is no longer required or used. If a household has not connected a YouTube account, the app returns a clear message: "Connect the child's YouTube account for this list before adding videos or channels." All YouTube Data API calls for whitelist flows (batch and single-video add) use fetch with Bearer token (Workers-safe). Docs and env examples updated; `POST /api/test-youtube` removed.
+
 ### Added
 
 - **Billing (Phase 1 — database):** Subscription table and types for household billing. Migration `migrations/002_subscriptions.sql` adds `public.subscriptions` (one per household): `household_id`, `billing_parent_id`, `provider` (stripe/paypal), `provider_subscription_id`, `provider_customer_id`, `status`, `trial_start`, `trial_end`, `current_period_start`, `current_period_end`, `cancel_at_period_end`, timestamps. RLS: household members can SELECT; INSERT/UPDATE/DELETE via service role (webhooks). `types/database.ts` extended with `subscriptions` table and `Subscription` type.
@@ -22,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rate limiting:** Use separate limiters per type (public / auth / videoAdd) so 429s happen less often. When Upstash Redis is configured, auth endpoints (e.g. `/api/children`, `/api/youtube-connection`, `/api/households`) now get 60 requests per 15 minutes per IP instead of sharing a single 10/15m bucket. Public stays 100/15m; videoAdd 20/60m. In-memory limiters (no Redis) now use the same auth limit (60/15m) for consistency.
 
 ### Fixed
+
+- **"YOUTUBE_URL_NOT_SET" / whitelist add after connecting child account:** (Superseded by OAuth-only whitelist: YOUTUBE_API_KEY is no longer used.) Previously, adding URLs required YOUTUBE_API_KEY; we improved error messaging and docs. Now the whitelist uses only the connected child's YouTube account (OAuth).
 
 - **YouTube batch (whitelist) on Cloudflare Workers:** Replaced googleapis in `POST /api/youtube-batch` with native `fetch()` to YouTube Data API v3 (videos, playlistItems, channels). Fixes "http.validateHeaderName is not implemented yet" when adding a channel/playlist/video to the whitelist on voobi.app.
 

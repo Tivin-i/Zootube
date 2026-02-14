@@ -56,7 +56,11 @@ export default function VideoAddForm({
       const data = await response.json();
 
       if (!response.ok) {
-        onError(data.error || "Failed to add video");
+        if (response.status === 403 && data.code === "YOUTUBE_CONNECTION_REQUIRED") {
+          onError("Connect the child's YouTube account for this list before adding videos or channels.");
+        } else {
+          onError(data.error || "Failed to add video");
+        }
       } else if (data.warning) {
         // Video is not "Made for Kids" - show confirmation dialog
         setAddingVideo(false);
@@ -123,6 +127,7 @@ export default function VideoAddForm({
         },
         body: JSON.stringify({
           url: videoUrl,
+          household_id: householdId,
           pageToken,
         }),
       });
@@ -130,7 +135,14 @@ export default function VideoAddForm({
       const data = await response.json();
 
       if (!response.ok) {
-        onError(data.error || "Failed to fetch videos");
+        const msg = data.error || "Failed to fetch videos";
+        if (response.status === 403 && data.code === "YOUTUBE_CONNECTION_REQUIRED") {
+          onError(
+            "Connect the child's YouTube account for this list before adding videos or channels."
+          );
+        } else {
+          onError(msg);
+        }
         setInputMode("single");
         return;
       }

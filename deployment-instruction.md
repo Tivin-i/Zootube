@@ -27,7 +27,7 @@ Before deployment, ensure you have:
 - [ ] Supabase project URL
 - [ ] Supabase anon key
 - [ ] Supabase service role key
-- [ ] YouTube Data API v3 key
+- [ ] Google OAuth client (YouTube/child account connection; no separate API key)
 
 ## Step 1: Server Setup
 
@@ -113,8 +113,7 @@ NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<your-supabase-service-role-key>
 
-# YouTube Data API v3
-YOUTUBE_API_KEY=<your-youtube-api-key>
+# YouTube OAuth (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APP_URL, YOUTUBE_OAUTH_ENCRYPTION_KEY – see docs/setup.md)
 
 # Next.js Production Settings
 NEXT_PUBLIC_APP_URL=https://yourdomain.com

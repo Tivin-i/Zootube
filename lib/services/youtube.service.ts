@@ -1,9 +1,10 @@
-import { validateYouTubeUrl, getVideoMetadata, extractVideoId } from "@/lib/youtube";
+import { getVideoMetadataWithAccessToken, extractVideoId } from "@/lib/youtube";
 import { YouTubeVideoMetadata } from "@/lib/youtube";
 import { youtubeUrlSchema, youtubeVideoIdSchema } from "@/lib/validators/video.validator";
 
 /**
- * YouTube service for video validation and metadata fetching
+ * YouTube service for video validation and metadata fetching.
+ * Metadata calls require an OAuth access token (household's connected YouTube account).
  */
 export class YouTubeService {
   /**
@@ -21,30 +22,21 @@ export class YouTubeService {
   }
 
   /**
-   * Validate and fetch video metadata from YouTube
+   * Fetch video metadata from YouTube using the household's OAuth access token.
    */
-  async getVideoMetadata(url: string): Promise<YouTubeVideoMetadata | null> {
-    // Validate URL format first
+  async getVideoMetadata(url: string, accessToken: string): Promise<YouTubeVideoMetadata | null> {
     this.validateUrl(url);
-    
-    // Extract and validate video ID
     const videoId = this.extractVideoId(url);
-    if (!videoId) {
-      return null;
-    }
-
-    // Validate video ID format
+    if (!videoId) return null;
     youtubeVideoIdSchema.parse(videoId);
-
-    // Fetch metadata
-    return getVideoMetadata(videoId);
+    return getVideoMetadataWithAccessToken(accessToken, videoId);
   }
 
   /**
-   * Check if video is made for kids
+   * Check if video is made for kids (requires OAuth access token).
    */
-  async isMadeForKids(url: string): Promise<boolean> {
-    const metadata = await this.getVideoMetadata(url);
+  async isMadeForKids(url: string, accessToken: string): Promise<boolean> {
+    const metadata = await this.getVideoMetadata(url, accessToken);
     return metadata?.madeForKids || false;
   }
 }

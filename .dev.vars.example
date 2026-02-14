@@ -14,5 +14,4 @@ NEXTJS_ENV=development
 # GOOGLE_CLIENT_ID=
 # GOOGLE_CLIENT_SECRET=
 # YOUTUBE_OAUTH_ENCRYPTION_KEY=your-32-char-or-longer-secret
-# YOUTUBE_API_KEY=
 # APP_URL=http://localhost:8787

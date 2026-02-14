@@ -117,7 +117,7 @@ The app is set up for [Cloudflare Workers](https://workers.cloudflare.com/) via 
 
 1. **Install and configure:** `@opennextjs/cloudflare` and `wrangler` are already in the project. Copy `.dev.vars.example` to `.dev.vars` if you want to run a local Workers preview with env vars.
 
-2. **Set environment variables** in the [Cloudflare dashboard](https://dash.cloudflare.com/) (Workers & Pages → your worker → Settings → Variables and Secrets). These are **runtime** variables (the Worker reads them when handling requests; build-time vars are only for inlining `NEXT_PUBLIC_*`). Set: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and optionally `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `YOUTUBE_OAUTH_ENCRYPTION_KEY` (required for YouTube/child OAuth), `YOUTUBE_API_KEY`.
+2. **Set environment variables** in the [Cloudflare dashboard](https://dash.cloudflare.com/) (Workers & Pages → your worker → Settings → Variables and Secrets). These are **runtime** variables (the Worker reads them when handling requests; build-time vars are only for inlining `NEXT_PUBLIC_*`). Set: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and optionally `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `YOUTUBE_OAUTH_ENCRYPTION_KEY` (required for YouTube/child OAuth and for adding videos to the whitelist).
 
 3. **Deploy:** From the project root, run:
    ```bash

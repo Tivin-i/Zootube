@@ -1,8 +1,10 @@
 import { videoRepository, GetVideosOptions } from "@/lib/repositories/video.repository";
-import { youtubeService } from "@/lib/services/youtube.service";
 import { householdService } from "@/lib/services/household.service";
+import { youtubeConnectionRepository } from "@/lib/repositories/youtube-connection.repository";
+import { getAccessTokenFromRefreshToken } from "@/lib/services/youtube-oauth.service";
+import { extractVideoId, getVideoMetadataWithAccessToken } from "@/lib/youtube";
 import { Video } from "@/types/database";
-import { NotFoundError } from "@/lib/errors/app-errors";
+import { NotFoundError, YouTubeConnectionRequiredError } from "@/lib/errors/app-errors";
 import { Database } from "@/types/database";
 import { cache, getVideoListCacheKey, CACHE_TTL } from "@/lib/utils/cache";
 
@@ -114,7 +116,19 @@ export class VideoService {
 
     await householdService.ensureMember(householdId, addedByParentId);
 
-    const metadata = await youtubeService.getVideoMetadata(url);
+    const connection = await youtubeConnectionRepository.findByHouseholdId(householdId);
+    if (!connection) {
+      throw new YouTubeConnectionRequiredError();
+    }
+
+    const { access_token } = await getAccessTokenFromRefreshToken(connection.encrypted_refresh_token);
+
+    const videoId = extractVideoId(url);
+    if (!videoId) {
+      throw new NotFoundError("YouTube video");
+    }
+
+    const metadata = await getVideoMetadataWithAccessToken(access_token, videoId);
     if (!metadata) {
       throw new NotFoundError("YouTube video");
     }

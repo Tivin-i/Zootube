@@ -23,7 +23,6 @@ docker run -p 3000:3000 \
   -e NEXT_PUBLIC_SUPABASE_URL=your_url \
   -e NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key \
   -e SUPABASE_SERVICE_ROLE_KEY=your_key \
-  -e YOUTUBE_API_KEY=your_key \
   voobi:latest
 
 # Run in detached mode

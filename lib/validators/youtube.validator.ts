@@ -21,6 +21,7 @@ export const youtubeBatchSchema = z.object({
       },
       { message: "URL must be a valid YouTube URL" }
     ),
+  household_id: z.string().uuid("Invalid household ID format"),
   parent_id: z.string().uuid("Invalid parent ID format"),
   pageToken: z.string().optional(),
 });

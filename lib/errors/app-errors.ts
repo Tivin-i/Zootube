@@ -59,6 +59,17 @@ export class ForbiddenError extends AppError {
 }
 
 /**
+ * YouTube connection required - household must connect child's YouTube account before adding videos
+ */
+export class YouTubeConnectionRequiredError extends AppError {
+  constructor(
+    message: string = "Connect the child's YouTube account for this list before adding videos."
+  ) {
+    super(message, 403, "YOUTUBE_CONNECTION_REQUIRED");
+  }
+}
+
+/**
  * Service unavailable - server config missing or dependency down (e.g. service role key)
  */
 export class ServiceUnavailableError extends AppError {

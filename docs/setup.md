@@ -132,19 +132,9 @@ create trigger on_auth_user_created
 2. Search for "YouTube Data API v3"
 3. Click **Enable**
 
-### 3.3 Create API Key
+### 3.3 YouTube OAuth (connect child's YouTube account)
 
-1. Go to **APIs & Services** > **Credentials**
-2. Click **Create Credentials** > **API Key**
-3. Copy the API key
-4. (Recommended) Click **Restrict Key**:
-   - **API restrictions**: Select "Restrict key"
-   - Choose "YouTube Data API v3"
-   - Save
-
-### 3.4 YouTube OAuth (optional – connect child's YouTube account)
-
-To let parents link a YouTube account per household (e.g. for future playlist import):
+Adding videos or channels to the whitelist (dashboard "Add YouTube Videos") uses the **household's connected YouTube account** (OAuth). No separate YouTube API key is required. Parents connect a child's YouTube account per household; that account is then used to fetch video/channel/playlist metadata.
 
 1. Go to **APIs & Services** > **Credentials**
 2. Click **Create Credentials** > **OAuth client ID**
@@ -156,7 +146,7 @@ To let parents link a YouTube account per household (e.g. for future playlist im
 6. Create and copy the **Client ID** and **Client secret**
 7. In your app env (Step 4), set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, and `YOUTUBE_OAUTH_ENCRYPTION_KEY` (see `.env.example`). **Cloudflare:** these are read at **runtime**; set them in the Worker’s Environment variables or Secrets in the Cloudflare dashboard (and in `.dev.vars` for local `npm run preview`), not only as build variables.
 
-The `youtube_connections` table is created by `migrations/001_schema.sql`; no separate migration is needed.
+The `youtube_connections` table is created by `migrations/001_schema.sql`. If a household has not connected a YouTube account, the app will show a clear message to connect the child's YouTube account for that list before adding videos or channels.
 
 ## Step 4: Configure Environment Variables
 
@@ -170,14 +160,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxxxx...
 # Required in production for device linking (DB-backed device tokens). In dev, optional (cookie-only fallback exists).
 SUPABASE_SERVICE_ROLE_KEY=eyJxxxxx...
 
-# YouTube Data API v3
-YOUTUBE_API_KEY=AIzaSyxxxxx...
-
-# Optional: YouTube OAuth (connect child's account per household)
-# GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-# GOOGLE_CLIENT_SECRET=xxxxx
-# APP_URL=http://103.167.150.103:10100  # or your Voobi URL
-# YOUTUBE_OAUTH_ENCRYPTION_KEY=your-32-char-or-longer-secret
+# YouTube OAuth (required for adding videos/channels to the whitelist – connect child's account per household)
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=xxxxx
+APP_URL=http://103.167.150.103:10100  # or your Voobi URL
+YOUTUBE_OAUTH_ENCRYPTION_KEY=your-32-char-or-longer-secret
 
 # Optional: beta invite code – when set, only users with this code can sign up (leave empty for open signup).
 # Restart the dev server (or redeploy) after adding or changing BETA_INVITE_CODE so the API can read it.
@@ -217,10 +204,9 @@ Tests use mocks for APIs where possible; some flows (e.g. full device linking wi
 
 ## Troubleshooting
 
-### "Invalid API key" error
-- Verify your YouTube API key in `.env.local`
-- Ensure YouTube Data API v3 is enabled in Google Cloud Console
-- Check API key restrictions
+### "Connect the child's YouTube account for this list before adding videos"
+- Ensure the household has connected a YouTube account (admin dashboard: select the list, then connect the child's YouTube account).
+- OAuth env vars must be set: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `YOUTUBE_OAUTH_ENCRYPTION_KEY`.
 
 ### "Failed to fetch" or CORS errors
 - Verify Supabase URL and keys in `.env.local`

@@ -89,6 +89,47 @@ export function decryptRefreshToken(ciphertext: string): string {
 }
 
 /**
+ * Get a fresh access token from an encrypted refresh token (fetch-only, Workers-safe).
+ * Use for server-side YouTube Data API calls with Bearer auth.
+ * @param encryptedRefreshToken - Value from youtube_connections.encrypted_refresh_token
+ * @returns access_token; refresh_token if Google rotated it (caller may persist)
+ */
+export async function getAccessTokenFromRefreshToken(
+  encryptedRefreshToken: string
+): Promise<{ access_token: string; refresh_token?: string }> {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) throw new Error("Google OAuth credentials not configured");
+
+  const refreshToken = decryptRefreshToken(encryptedRefreshToken);
+
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    }).toString(),
+  });
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error(`Google token refresh failed: ${tokenRes.status} ${err}`);
+  }
+  const data = (await tokenRes.json()) as {
+    access_token?: string;
+    refresh_token?: string;
+  };
+  const access_token = data.access_token;
+  if (!access_token) throw new Error("No access_token in refresh response");
+  return {
+    access_token,
+    refresh_token: data.refresh_token,
+  };
+}
+
+/**
  * @param requestOrigin - Origin of the request (e.g. https://voobi.app). When set, used for redirect_uri so OAuth works even if APP_URL is unset in production.
  */
 export function createAuthUrl(state: string, requestOrigin?: string): string {

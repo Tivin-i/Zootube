@@ -1,10 +1,5 @@
-import { google } from "googleapis";
 import { cache, getYouTubeMetadataCacheKey, CACHE_TTL } from "@/lib/utils/cache";
-
-const youtube = google.youtube({
-  version: "v3",
-  auth: process.env.YOUTUBE_API_KEY,
-});
+import { youtubeFetchWithAccessToken } from "@/lib/youtube-oauth-api";
 
 export interface YouTubeVideoMetadata {
   id: string;
@@ -53,13 +48,13 @@ function parseDuration(duration: string): number {
 }
 
 /**
- * Fetch video metadata from YouTube Data API
- * Results are cached for 24 hours to reduce API calls
+ * Fetch video metadata from YouTube Data API using OAuth access token (fetch-only, Workers-safe).
+ * Results are cached by videoId. Use for single-video add when household's YouTube is connected.
  */
-export async function getVideoMetadata(
+export async function getVideoMetadataWithAccessToken(
+  accessToken: string,
   videoId: string
 ): Promise<YouTubeVideoMetadata | null> {
-  // Check cache first
   const cacheKey = getYouTubeMetadataCacheKey(videoId);
   const cached = cache.get<YouTubeVideoMetadata>(cacheKey);
   if (cached) {
@@ -67,56 +62,38 @@ export async function getVideoMetadata(
   }
 
   try {
-    const response = await youtube.videos.list({
-      part: ["snippet", "contentDetails", "status"],
-      id: [videoId],
-    });
+    const data = (await youtubeFetchWithAccessToken(accessToken, "videos", {
+      part: "snippet,contentDetails,status",
+      id: videoId,
+    })) as {
+      items?: Array<{
+        snippet?: { title?: string; thumbnails?: { high?: { url?: string }; medium?: { url?: string }; default?: { url?: string } } };
+        contentDetails?: { duration?: string };
+        status?: { madeForKids?: boolean };
+      }>;
+    };
 
-    const video = response.data.items?.[0];
-    if (!video) {
-      return null;
-    }
-
-    const snippet = video.snippet;
-    const contentDetails = video.contentDetails;
-    const status = video.status;
-
-    if (!snippet || !contentDetails) {
+    const video = data.items?.[0];
+    if (!video?.snippet || !video?.contentDetails) {
       return null;
     }
 
     const metadata: YouTubeVideoMetadata = {
       id: videoId,
-      title: snippet.title || "Untitled Video",
+      title: video.snippet.title || "Untitled Video",
       thumbnailUrl:
-        snippet.thumbnails?.high?.url ||
-        snippet.thumbnails?.medium?.url ||
-        snippet.thumbnails?.default?.url ||
+        video.snippet.thumbnails?.high?.url ||
+        video.snippet.thumbnails?.medium?.url ||
+        video.snippet.thumbnails?.default?.url ||
         "",
-      durationSeconds: parseDuration(contentDetails.duration || "PT0S"),
-      madeForKids: status?.madeForKids || false,
+      durationSeconds: parseDuration(video.contentDetails.duration || "PT0S"),
+      madeForKids: video.status?.madeForKids ?? false,
     };
 
-    // Cache the result for 24 hours
     cache.set(cacheKey, metadata, CACHE_TTL.YOUTUBE_METADATA);
-
     return metadata;
   } catch (error) {
-    console.error("Error fetching YouTube video metadata:", error);
+    console.error("Error fetching YouTube video metadata (OAuth):", error);
     return null;
   }
-}
-
-/**
- * Validate YouTube URL and return metadata if valid
- */
-export async function validateYouTubeUrl(
-  url: string
-): Promise<YouTubeVideoMetadata | null> {
-  const videoId = extractVideoId(url);
-  if (!videoId) {
-    return null;
-  }
-
-  return getVideoMetadata(videoId);
 }

@@ -4,23 +4,13 @@ import { handleApiError } from "@/lib/utils/error-handler";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { UnauthorizedError } from "@/lib/errors/app-errors";
 import { createClient } from "@/lib/supabase/server";
+import { householdService } from "@/lib/services/household.service";
+import { youtubeConnectionRepository } from "@/lib/repositories/youtube-connection.repository";
+import { getAccessTokenFromRefreshToken } from "@/lib/services/youtube-oauth.service";
+import { youtubeFetchWithAccessToken } from "@/lib/youtube-oauth-api";
 
-/** YouTube Data API v3 via fetch (Workers-safe; googleapis uses Node http). */
-function youtubeApiKey(): string {
-  const key = process.env.YOUTUBE_API_KEY;
-  if (!key) throw new Error("YOUTUBE_API_KEY is not set");
-  return key;
-}
-
-async function youtubeFetch(path: string, params: Record<string, string>): Promise<unknown> {
-  const key = youtubeApiKey();
-  const url = new URL(`https://www.googleapis.com/youtube/v3/${path}`);
-  url.searchParams.set("key", key);
-  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") url.searchParams.set(k, v);
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`YouTube API ${res.status}: ${await res.text()}`);
-  return res.json();
-}
+const YOUTUBE_CONNECTION_REQUIRED_MESSAGE =
+  "Connect the child's YouTube account for this list before adding videos or channels.";
 
 // Helper to extract IDs from URLs
 function parseYouTubeUrl(url: string): {
@@ -97,9 +87,22 @@ export async function POST(request: NextRequest) {
     // Validate input
     const validated = youtubeBatchSchema.parse({
       url: body.url,
+      household_id: body.household_id,
       parent_id: user.id,
       pageToken: body.pageToken,
     });
+
+    await householdService.ensureMember(validated.household_id, user.id);
+
+    const connection = await youtubeConnectionRepository.findByHouseholdId(validated.household_id);
+    if (!connection) {
+      return NextResponse.json(
+        { error: YOUTUBE_CONNECTION_REQUIRED_MESSAGE, code: "YOUTUBE_CONNECTION_REQUIRED" },
+        { status: 403 }
+      );
+    }
+
+    const { access_token } = await getAccessTokenFromRefreshToken(connection.encrypted_refresh_token);
 
     const parsed = parseYouTubeUrl(validated.url);
 
@@ -112,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     // Handle single video
     if (parsed.type === "video") {
-      const data = (await youtubeFetch("videos", {
+      const data = (await youtubeFetchWithAccessToken(access_token, "videos", {
         part: "snippet,contentDetails,status",
         id: parsed.id,
       })) as { items?: Array<{
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest) {
         maxResults: "20",
       };
       if (validated.pageToken) listParams.pageToken = validated.pageToken;
-      const listData = (await youtubeFetch("playlistItems", listParams)) as {
+      const listData = (await youtubeFetchWithAccessToken(access_token, "playlistItems", listParams)) as {
         items?: Array<{ contentDetails?: { videoId?: string } }>;
         nextPageToken?: string;
         pageInfo?: { totalResults?: number };
@@ -174,7 +177,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const videosData = (await youtubeFetch("videos", {
+      const videosData = (await youtubeFetchWithAccessToken(access_token, "videos", {
         part: "snippet,contentDetails,status",
         id: videoIds.join(","),
       })) as { items?: Array<{
@@ -215,14 +218,14 @@ export async function POST(request: NextRequest) {
         } else {
           channelParams.forUsername = parsed.id;
         }
-        const channelData = (await youtubeFetch("channels", channelParams)) as {
+        const channelData = (await youtubeFetchWithAccessToken(access_token, "channels", channelParams)) as {
           items?: Array<{ id?: string }>;
         };
         channelId = channelData.items?.[0]?.id ?? channelId;
       }
 
       // Get uploads playlist ID
-      const channelDetails = (await youtubeFetch("channels", {
+      const channelDetails = (await youtubeFetchWithAccessToken(access_token, "channels", {
         part: "contentDetails",
         id: channelId,
       })) as { items?: Array<{ contentDetails?: { relatedPlaylists?: { uploads?: string } } }> };
@@ -242,7 +245,7 @@ export async function POST(request: NextRequest) {
         maxResults: "20",
       };
       if (validated.pageToken) listParams.pageToken = validated.pageToken;
-      const listData = (await youtubeFetch("playlistItems", listParams)) as {
+      const listData = (await youtubeFetchWithAccessToken(access_token, "playlistItems", listParams)) as {
         items?: Array<{ contentDetails?: { videoId?: string } }>;
         nextPageToken?: string;
         pageInfo?: { totalResults?: number };
@@ -261,7 +264,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const videosData = (await youtubeFetch("videos", {
+      const videosData = (await youtubeFetchWithAccessToken(access_token, "videos", {
         part: "snippet,contentDetails,status",
         id: videoIds.join(","),
       })) as { items?: Array<{
