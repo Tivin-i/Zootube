@@ -84,6 +84,16 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    if (body.household_id == null || body.household_id === "") {
+      return NextResponse.json(
+        {
+          error: "Select a list first, then add a video or channel. household_id is required.",
+          code: "VALIDATION_ERROR",
+        },
+        { status: 400 }
+      );
+    }
+
     // Validate input
     const validated = youtubeBatchSchema.parse({
       url: body.url,

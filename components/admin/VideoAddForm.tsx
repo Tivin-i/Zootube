@@ -37,6 +37,10 @@ export default function VideoAddForm({
 
   const handleAddVideo = async (e: React.FormEvent, forceConfirm = false) => {
     e.preventDefault();
+    if (!householdId) {
+      onError("Please select a list first, then add a video.");
+      return;
+    }
     setAddingVideo(true);
     onError(null);
 
@@ -116,6 +120,10 @@ export default function VideoAddForm({
   };
 
   const handleFetchBatch = async (pageToken?: string) => {
+    if (!householdId) {
+      onError("Please select a list first, then add a video or channel.");
+      return;
+    }
     setLoadingBatch(true);
     onError(null);
 
